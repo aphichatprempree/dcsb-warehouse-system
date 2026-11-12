@@ -1,4 +1,5 @@
 import os, json, sqlite3, datetime as dt
+import os, json, sqlite3, datetime as dt, html
 from pathlib import Path
 import streamlit as st
 
@@ -70,28 +71,39 @@ class Store:
             url = setting("SUPABASE_URL")
             key = setting("SUPABASE_KEY")
             self.client = create_client(url, key)
+            self.client = create_client(setting("SUPABASE_URL"), setting("SUPABASE_KEY"))
         else:
             self.path = Path(__file__).with_name("queue_local.db")
             with sqlite3.connect(self.path) as con:
                 con.execute("CREATE TABLE IF NOT EXISTS queue_config (id INTEGER PRIMARY KEY CHECK(id=1), current_queue INTEGER NOT NULL, active_queues TEXT NOT NULL, nicknames TEXT NOT NULL, custom_names TEXT NOT NULL, updated_by TEXT, updated_at TEXT)")
                 con.execute("INSERT OR IGNORE INTO queue_config VALUES (1,1,?,?,?,?,?)", (json.dumps({str(i):True for i in range(1,6)}), json.dumps({str(i):"" for i in range(1,6)}), "{}", "System Init", dt.datetime.now(dt.timezone.utc).isoformat()))
+                con.execute("CREATE TABLE IF NOT EXISTS queue_config (id INTEGER PRIMARY KEY CHECK(id=1), current_queue INTEGER NOT NULL, active_queues TEXT NOT NULL, nicknames TEXT NOT NULL, custom_names TEXT NOT NULL, queue_labels TEXT NOT NULL DEFAULT '{}', updated_by TEXT, updated_at TEXT)")
+                columns = {row[1] for row in con.execute("PRAGMA table_info(queue_config)")}
+                if "queue_labels" not in columns:
+                    con.execute("ALTER TABLE queue_config ADD COLUMN queue_labels TEXT NOT NULL DEFAULT '{}'")
+                con.execute("INSERT OR IGNORE INTO queue_config (id,current_queue,active_queues,nicknames,custom_names,queue_labels,updated_by,updated_at) VALUES (1,1,?,?,?,?,?,?)", (json.dumps({str(i):True for i in range(1,6)}), json.dumps({str(i):"" for i in range(1,6)}), "{}", json.dumps({str(i):f"QUEUE 0{i}" for i in range(1,6)}), "System Init", dt.datetime.now(dt.timezone.utc).isoformat()))
 
     def load(self):
         if self.remote:
             row = self.client.table("queue_config").select("*").eq("id", 1).single().execute().data
             return row
+            return self.client.table("queue_config").select("*").eq("id", 1).single().execute().data
         with sqlite3.connect(self.path) as con:
             row = con.execute("SELECT current_queue,active_queues,nicknames,custom_names,updated_by,updated_at FROM queue_config WHERE id=1").fetchone()
         return {"current_queue":row[0], "active_queues":json.loads(row[1]), "nicknames":json.loads(row[2]), "custom_names":json.loads(row[3]), "updated_by":row[4], "updated_at":row[5]}
+            row = con.execute("SELECT current_queue,active_queues,nicknames,custom_names,queue_labels,updated_by,updated_at FROM queue_config WHERE id=1").fetchone()
+        return {"current_queue":row[0], "active_queues":json.loads(row[1]), "nicknames":json.loads(row[2]), "custom_names":json.loads(row[3]), "queue_labels":json.loads(row[4]), "updated_by":row[5], "updated_at":row[6]}
 
     def save(self, data, editor):
         now = dt.datetime.now(dt.timezone.utc).isoformat()
         if self.remote:
             self.client.table("queue_config").update({"current_queue":data["current_queue"], "active_queues":data["active_queues"], "nicknames":data["nicknames"], "custom_names":data["custom_names"], "updated_by":editor, "updated_at":now}).eq("id",1).execute()
+            self.client.table("queue_config").update({"current_queue":data["current_queue"], "active_queues":data["active_queues"], "nicknames":data["nicknames"], "custom_names":data["custom_names"], "queue_labels":data["queue_labels"], "updated_by":editor, "updated_at":now}).eq("id",1).execute()
         else:
             with sqlite3.connect(self.path) as con:
                 con.execute("UPDATE queue_config SET current_queue=?,active_queues=?,nicknames=?,custom_names=?,updated_by=?,updated_at=? WHERE id=1", (data["current_queue"],json.dumps(data["active_queues"]),json.dumps(data["nicknames"]),json.dumps(data["custom_names"]),editor,now))
 
+                con.execute("UPDATE queue_config SET current_queue=?,active_queues=?,nicknames=?,custom_names=?,queue_labels=?,updated_by=?,updated_at=? WHERE id=1", (data["current_queue"],json.dumps(data["active_queues"]),json.dumps(data["nicknames"]),json.dumps(data["custom_names"]),json.dumps(data["queue_labels"]),editor,now))
 @st.cache_resource
 def store(): return Store()
 
@@ -130,6 +142,7 @@ with st.sidebar:
 st.markdown('<div class="hero"><div class="eyebrow">DCSB · LIVE OPERATIONS</div><h1>ระบบจัดการคิว</h1><div class="subtle">Queue Control & Product Expiry Dashboard</div></div>', unsafe_allow_html=True)
 
 active=data["active_queues"] or {}; names=data["custom_names"] or {}; nicknames=data["nicknames"] or {}
+active=data["active_queues"] or {}; names=data["custom_names"] or {}; nicknames=data["nicknames"] or {}; labels=data.get("queue_labels", {}) or {}
 curr=int(data["current_queue"])
 cur_name=names.get(str(curr),DEFAULT_QUEUES[str(curr)]["name"])
 cur_nick=nicknames.get(str(curr),"")
@@ -137,6 +150,7 @@ cur_nick=nicknames.get(str(curr),"")
 left,right=st.columns([1.05,1.95], gap="large")
 with left:
     st.markdown(f'<div class="current"><div class="label">NOW SERVING</div><div class="number">#{curr}</div><div class="company">{cur_name}{(" · "+cur_nick) if cur_nick else ""}</div><div class="subtle">กำลังเรียกคิวปัจจุบัน</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="current"><div class="label">NOW SERVING</div><div class="number">#{curr}</div><div class="company">{html.escape(cur_name)}{(" · "+html.escape(cur_nick)) if cur_nick else ""}</div><div class="subtle">กำลังเรียกคิวปัจจุบัน</div></div>', unsafe_allow_html=True)
     st.caption(f"อัปเดตโดย {data.get('updated_by') or '—'} · {str(data.get('updated_at') or '')[:19].replace('T',' ')} UTC")
     a,b=st.columns(2)
     if a.button("− ลดคิว", use_container_width=True):
@@ -152,15 +166,24 @@ with left:
             data["current_queue"]=next((i for i in candidates if i>curr),candidates[0]); db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (เปลี่ยนคิว)"); st.rerun()
     st.markdown("#### จัดการรายการคิว")
     with st.expander("แก้ชื่อคิว / ชื่อเรียก", expanded=False):
+    with st.expander("แก้ข้อมูลคิวทั้งหมด (ป้ายคิว / บริษัท / ชื่อเล่น)", expanded=False):
         for q in range(1,6):
             key=str(q)
             st.markdown(f"**คิว #{q}**")
             n1,n2=st.columns(2)
             names[key]=n1.text_input("ชื่อบริษัท", value=names.get(key,DEFAULT_QUEUES[key]["name"]), key=f"name{q}")
             nicknames[key]=n2.text_input("ชื่อเล่น", value=nicknames.get(key,""), key=f"nick{q}")
+            st.markdown(f"**ตั้งค่าคิว {q:02d}**")
+            n1,n2,n3=st.columns([1,1.2,1])
+            labels[key]=n1.text_input("ป้ายบนการ์ด", value=labels.get(key,f"QUEUE 0{q}"), key=f"label{q}")
+            names[key]=n2.text_input("ชื่อบริษัท", value=names.get(key,DEFAULT_QUEUES[key]["name"]), key=f"name{q}")
+            nicknames[key]=n3.text_input("ชื่อเล่น", value=nicknames.get(key,""), key=f"nick{q}")
             st.divider()
         if st.button("บันทึกชื่อคิว", use_container_width=True):
             data["custom_names"]=names; data["nicknames"]=nicknames; db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (แก้ชื่อ)"); st.rerun()
+        if st.button("บันทึกข้อมูลคิวทั้งหมด", use_container_width=True):
+            data["queue_labels"]=labels; data["custom_names"]=names; data["nicknames"]=nicknames
+            db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (แก้ข้อมูลคิว)"); st.success("บันทึกข้อมูลคิวแล้ว"); st.rerun()
 
 with right:
     st.markdown("#### ภาพรวมคิว")
@@ -171,6 +194,7 @@ with right:
         cls="off" if not is_on else "active" if q==curr else "done" if q<curr else ""
         with cols[q-1]:
             st.markdown(f'<div class="card {cls}"><div class="q">QUEUE 0{q}</div><div class="nm">{names.get(key,DEFAULT_QUEUES[key]["name"])}</div><div class="st">● {status}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="card {cls}"><div class="q">{html.escape(labels.get(key,f"QUEUE 0{q}"))}</div><div class="nm">{html.escape(names.get(key,DEFAULT_QUEUES[key]["name"]))}</div><div class="st">● {status}</div></div>', unsafe_allow_html=True)
             if st.button("ปิดคิว" if is_on else "เปิดคิว", key=f"toggle{q}", use_container_width=True):
                 active[key]=not is_on
                 if not active[key] and curr==q:
@@ -184,3 +208,9 @@ with right:
     m3.metric("ระบบ", "LIVE" if USE_SUPABASE else "LOCAL PREVIEW")
     if not USE_SUPABASE:
         st.warning("ขณะนี้กำลังใช้ฐานข้อมูลในเครื่องสำหรับทดลอง ผู้ใช้ที่เปิดคนละเครื่องจะยังไม่เห็นข้อมูลร่วมกัน จนกว่าจะตั้งค่า Supabase ตาม README")
+
+
+
+
+
+
