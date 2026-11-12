@@ -1,312 +1,186 @@
-import customtkinter as ctk
-import datetime as dt
-import sqlite3
-import json
-import pyttsx3
-import threading
+import os, json, sqlite3, datetime as dt
+from pathlib import Path
+import streamlit as st
 
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("blue")
+st.set_page_config(page_title="DCSB • Queue Control", page_icon="◈", layout="wide")
+theme_mode = st.sidebar.radio("ธีมหน้าจอ", ["🌙 โหมดมืด", "☀️ โหมดสว่าง"], horizontal=True, label_visibility="visible")
+light_theme = theme_mode == "☀️ โหมดสว่าง"
+theme_vars = ("--bg:#edf3fa;--panel:#ffffff;--panel2:#f5f8fc;--line:#cbd7e5;--text:#14263a;--muted:#52677e;--accent:#087e9b;--shadow:0 16px 36px #23405a24;" if light_theme else "--bg:#07111f;--panel:#0d1a2b;--panel2:#102137;--line:#23405c;--text:#eef7ff;--muted:#b4c7d8;--accent:#2de2e6;--shadow:0 18px 40px #0006;")
 
-DB_PATH = "desktop_queue_system.db"
+DEFAULT_QUEUES = {
+    "1": {"name": "SAHAPAT", "readAs": "ขอเชิญคิวที่ 1 บริษัท สหพัฒน์"},
+    "2": {"name": "DKSH", "readAs": "ขอเชิญคิวที่ 2 บริษัท ดีเคเอสเอช"},
+    "3": {"name": "CROSSDOCK", "readAs": "ขอเชิญคิวที่ 3 บริษัท ครอสคอร์ส"},
+    "4": {"name": "PEPSI", "readAs": "ขอเชิญคิวที่ 4 บริษัท เป๊ปซี่"},
+    "5": {"name": "SINO", "readAs": "ขอเชิญคิวที่ 5 บริษัท ชิโน"},
+}
 
-def init_db():
-    with sqlite3.connect(DB_PATH) as con:
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS queue_config (
-                id INTEGER PRIMARY KEY,
-                current_queue INTEGER DEFAULT 1,
-                active_queues TEXT,
-                nicknames TEXT,
-                custom_names TEXT,
-                updated_by TEXT
-            )
-        """)
-        row = con.execute("SELECT id FROM queue_config WHERE id=1").fetchone()
-        if not row:
-            init_data = {
-                "current_queue": 1,
-                "active_queues": json.dumps({1:True, 2:True, 3:True, 4:True, 5:True}),
-                "nicknames": json.dumps({1:"", 2:"", 3:"", 4:"", 5:""}),
-                "custom_names": json.dumps({}),
-                "updated_by": "System Init"
-            }
-            con.execute("""
-                INSERT INTO queue_config (id, current_queue, active_queues, nicknames, custom_names, updated_by)
-                VALUES (1, ?, ?, ?, ?, ?)
-            """, (init_data["current_queue"], init_data["active_queues"], init_data["nicknames"], init_data["custom_names"], init_data["updated_by"]))
+st.markdown("<style>:root{" + theme_vars + "}" + """
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Orbitron:wght@500;600;700&display=swap');
+html, body, [class*="css"] { font-family:'IBM Plex Sans Thai',sans-serif; }
+.stApp { background:radial-gradient(ellipse at 80% -10%,#16749b44 0%,var(--bg) 55%); color:var(--text); }
+[data-testid="stHeader"] { background:transparent; }
+[data-testid="stMarkdownContainer"] h1,[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4,[data-testid="stMarkdownContainer"] p { color:var(--text); }
+.block-container { max-width:1540px; padding:1.6rem 2rem 2.5rem; }
+section[data-testid="stSidebar"] { background:var(--panel); border-right:1px solid var(--line); }
+section[data-testid="stSidebar"] * { color:var(--text); }
+.hero { padding:25px 30px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(130deg,var(--panel),var(--panel2)); box-shadow:var(--shadow),inset 0 1px 0 #ffffff20; margin-bottom:22px; }
+.eyebrow { color:var(--accent); font-family:Orbitron,sans-serif; letter-spacing:2px; font-size:12px; font-weight:700; }
+.hero h1 { margin:8px 0 3px; font-size:30px; color:var(--text); }
+.subtle { color:var(--muted); font-size:13px; }
+.current { border-radius:22px; padding:26px; text-align:center; background:linear-gradient(140deg,#08789b,#1c3d83 65%,#39337c); border:1px solid #56eaf0; box-shadow:0 18px 38px #006a8744,inset 0 2px 0 #ffffff35,inset 0 -12px 35px #050d2833; }
+.current .label { color:#c7fbff; letter-spacing:2.4px; font-size:12px; font-weight:700; }
+.current .number { font-family:Orbitron,sans-serif; font-size:clamp(58px,7vw,84px); line-height:1.08; color:#fff; text-shadow:0 3px 0 #09274b,0 0 26px #8ffcff88; }
+.current .company { font-size:23px; font-weight:700; color:#fff; }
+.card { border:1px solid var(--line); border-radius:16px; background:linear-gradient(150deg,var(--panel2),var(--panel)); padding:17px 15px; min-height:148px; margin-bottom:10px; box-shadow:0 8px 20px #0002,inset 0 1px 0 #ffffff18; transition:transform .18s ease,box-shadow .18s ease; }
+.card:hover { transform:translateY(-4px); box-shadow:0 16px 28px #0003,inset 0 1px 0 #ffffff22; }
+.card.active { border-color:#14cbd2; box-shadow:0 0 0 1px #14cbd255,0 12px 25px #07bac233; }
+.card.done { border-color:#159e7c; }
+.card.off { opacity:.62; }
+.card .q { font:700 11px Orbitron,sans-serif; color:var(--accent); letter-spacing:1.2px; }
+.card .nm { font-size:17px; font-weight:700; color:var(--text); margin:7px 0 9px; overflow-wrap:anywhere; }
+.card .st { color:var(--muted); font-size:12px; font-weight:600; }
+div[data-testid="stButton"] button { border-radius:11px; font-weight:700; min-height:43px; color:var(--text)!important; background:linear-gradient(180deg,var(--panel2),var(--panel))!important; border:1px solid var(--line)!important; box-shadow:0 4px 0 color-mix(in srgb,var(--line),transparent 15%),0 8px 15px #0002!important; }
+div[data-testid="stButton"] button:hover { transform:translateY(-2px); border-color:var(--accent)!important; color:var(--accent)!important; }
+div[data-testid="stButton"] button[kind="primary"] { background:linear-gradient(135deg,#0795b3,#2563c9)!important; color:white!important; border-color:#56eaf0!important; box-shadow:0 5px 0 #074b78,0 12px 22px #05699b55!important; }
+[data-testid="stMetric"] { background:linear-gradient(145deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:15px; padding:14px 17px; box-shadow:0 9px 20px #0002,inset 0 1px 0 #ffffff16; }
+[data-testid="stMetricLabel"] { color:var(--muted)!important; }
+[data-testid="stMetricValue"] { color:var(--text)!important; }
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stDateInput"] input { background:var(--panel2)!important; color:var(--text)!important; border:1px solid var(--line)!important; border-radius:10px!important; }
+[data-testid="stRadio"] label,[data-testid="stWidgetLabel"] p { color:var(--text)!important; font-weight:600; }
+[data-testid="stAlert"] { border-radius:12px; }
+hr { border-color:var(--line); }
+</style>
+""", unsafe_allow_html=True)
 
-init_db()
+# Shared backend is Supabase (Postgres). If credentials are not configured, use local SQLite for preview.
+def setting(name):
+    try:
+        return st.secrets.get(name, os.getenv(name, ""))
+    except Exception:
+        return os.getenv(name, "")
 
-def get_db_data():
-    with sqlite3.connect(DB_PATH) as con:
-        row = con.execute("SELECT current_queue, active_queues, nicknames, custom_names, updated_by FROM queue_config WHERE id=1").fetchone()
-        if row:
-            return {
-                "current_queue": row[0],
-                "active_queues": json.loads(row[1]),
-                "nicknames": json.loads(row[2]),
-                "custom_names": json.loads(row[3]),
-                "updated_by": row[4]
-            }
-        return None
+USE_SUPABASE = bool(setting("SUPABASE_URL") and setting("SUPABASE_KEY"))
 
-def save_db_data(data, editor):
-    with sqlite3.connect(DB_PATH) as con:
-        con.execute("""
-            UPDATE queue_config
-            SET current_queue=?, active_queues=?, nicknames=?, custom_names=?, updated_by=?
-            WHERE id=1
-        """, (data["current_queue"], json.dumps(data["active_queues"]), json.dumps(data["nicknames"]), json.dumps(data["custom_names"]), editor))
-
-def speak_queue_text(text):
-    def run_speech():
-        try:
-            engine = pyttsx3.init()
-            engine.setProperty('rate', 145)
-            engine.say(text)
-            engine.runAndWait()
-        except Exception as e:
-            print("Audio error:", e)
-    threading.Thread(target=run_speech, daemon=True).start()
-
-class DCSBDesktopApp(ctk.CTk):
+class Store:
     def __init__(self):
-        super().__init__()
+        self.remote = USE_SUPABASE
+        if self.remote:
+            from supabase import create_client
+            url = setting("SUPABASE_URL")
+            key = setting("SUPABASE_KEY")
+            self.client = create_client(url, key)
+        else:
+            self.path = Path(__file__).with_name("queue_local.db")
+            with sqlite3.connect(self.path) as con:
+                con.execute("CREATE TABLE IF NOT EXISTS queue_config (id INTEGER PRIMARY KEY CHECK(id=1), current_queue INTEGER NOT NULL, active_queues TEXT NOT NULL, nicknames TEXT NOT NULL, custom_names TEXT NOT NULL, updated_by TEXT, updated_at TEXT)")
+                con.execute("INSERT OR IGNORE INTO queue_config VALUES (1,1,?,?,?,?,?)", (json.dumps({str(i):True for i in range(1,6)}), json.dumps({str(i):"" for i in range(1,6)}), "{}", "System Init", dt.datetime.now(dt.timezone.utc).isoformat()))
 
-        self.title("DATA ENTRY (DCSB) - Desktop Queue & Expiry System")
-        self.geometry("1200x750")
-        self.minsize(1050, 680)
+    def load(self):
+        if self.remote:
+            row = self.client.table("queue_config").select("*").eq("id", 1).single().execute().data
+            return row
+        with sqlite3.connect(self.path) as con:
+            row = con.execute("SELECT current_queue,active_queues,nicknames,custom_names,updated_by,updated_at FROM queue_config WHERE id=1").fetchone()
+        return {"current_queue":row[0], "active_queues":json.loads(row[1]), "nicknames":json.loads(row[2]), "custom_names":json.loads(row[3]), "updated_by":row[4], "updated_at":row[5]}
 
-        self.DEFAULT_QUEUES = {
-            1: {"name": "SAHAPAT", "readAs": "ขอเชิญคิวที่ 1, บริษัท สหพัฒน์"},
-            2: {"name": "DKSH", "readAs": "ขอเชิญคิวที่ 2, บริษัท ดีเคเอสเอช"},
-            3: {"name": "CROSSDOCK", "readAs": "ขอเชิญคิวที่ 3, บริษัท ครอสคอร์ส"},
-            4: {"name": "PEPSI", "readAs": "ขอเชิญคิวที่ 4, บริษัท เป๊ปซี่"},
-            5: {"name": "SINO", "readAs": "ขอเชิญคิวที่ 5, บริษัท ชิโน"}
-        }
+    def save(self, data, editor):
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        if self.remote:
+            self.client.table("queue_config").update({"current_queue":data["current_queue"], "active_queues":data["active_queues"], "nicknames":data["nicknames"], "custom_names":data["custom_names"], "updated_by":editor, "updated_at":now}).eq("id",1).execute()
+        else:
+            with sqlite3.connect(self.path) as con:
+                con.execute("UPDATE queue_config SET current_queue=?,active_queues=?,nicknames=?,custom_names=?,updated_by=?,updated_at=? WHERE id=1", (data["current_queue"],json.dumps(data["active_queues"]),json.dumps(data["nicknames"]),json.dumps(data["custom_names"]),editor,now))
 
-        self.create_widgets()
-        self.load_data()
+@st.cache_resource
+def store(): return Store()
 
-    def create_widgets(self):
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+try:
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=3000, key="queue_refresh")
+except ImportError:
+    pass
 
-        # ฝั่งซ้าย
-        self.left_frame = ctk.CTkFrame(self, width=380, corner_radius=15)
-        self.left_frame.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
-        self.left_frame.grid_rowconfigure(5, weight=1)
+db = store()
+data = db.load()
 
-        ctk.CTkLabel(self.left_frame, text="📦 คำนวณอายุสินค้า (DCSB)", font=ctk.CTkFont(family="Prompt", size=16, weight="bold")).pack(pady=(15, 10))
+with st.sidebar:
+    st.markdown("### ◈ ศูนย์ควบคุม")
+    editor = st.text_input("ชื่อผู้ปฏิบัติงาน", value="เจ้าหน้าที่ 1")
+    st.caption("ผู้ชมทุกคนเห็นสถานะล่าสุดที่บันทึกไว้")
+    st.markdown("---")
+    st.markdown("#### อายุสินค้า")
+    mode = st.radio("รูปแบบการตรวจสอบ", ["เกณฑ์ Min / Max", "Product Life"], horizontal=False)
+    target = st.date_input("วันหมดอายุสินค้า", value=dt.date.today())
+    c1,c2=st.columns(2)
+    min_days=c1.number_input("MIN วัน", min_value=0, value=730, step=1)
+    max_days=c2.number_input("MAX วัน", min_value=0, value=1095, step=1)
+    if st.button("⌕ ตรวจสอบอายุสินค้า", use_container_width=True):
+        if min_days > max_days:
+            st.error("ค่า MIN ต้องไม่มากกว่า MAX")
+        else:
+            low=dt.date.today()+dt.timedelta(days=int(min_days)); high=dt.date.today()+dt.timedelta(days=int(max_days))
+            st.info(f"ช่วงรับได้: {low:%d/%m/%Y} – {high:%d/%m/%Y}")
+            if target < low: st.error(f"REJECT · ต่ำกว่า MIN {(low-target).days:,} วัน")
+            elif target > high: st.warning(f"CHECK · เกิน MAX {(target-high).days:,} วัน")
+            else: st.success("ACCEPT · อายุสินค้าผ่านเกณฑ์")
+    st.markdown("---")
+    st.caption("🟢 รีเฟรชอัตโนมัติทุก 3 วินาที")
 
-        self.calc_mode_var = ctk.StringVar(value="minmax")
-        mode_frame = ctk.CTkFrame(self.left_frame, fg_color="transparent")
-        mode_frame.pack(fill="x", padx=15, pady=5)
-        ctk.CTkRadioButton(mode_frame, text="ตรวจสอบเกณฑ์ Min/Max", variable=self.calc_mode_var, value="minmax", font=ctk.CTkFont(family="Prompt", size=12)).pack(side="left", expand=True)
-        ctk.CTkRadioButton(mode_frame, text="คำนวณ Product Life", variable=self.calc_mode_var, value="prolife", font=ctk.CTkFont(family="Prompt", size=12)).pack(side="right", expand=True)
+st.markdown('<div class="hero"><div class="eyebrow">DCSB · LIVE OPERATIONS</div><h1>ระบบจัดการคิว</h1><div class="subtle">Queue Control & Product Expiry Dashboard</div></div>', unsafe_allow_html=True)
 
-        self.minmax_frame = ctk.CTkFrame(self.left_frame, fg_color="transparent")
-        self.minmax_frame.pack(fill="x", padx=15, pady=10)
+active=data["active_queues"] or {}; names=data["custom_names"] or {}; nicknames=data["nicknames"] or {}
+curr=int(data["current_queue"])
+cur_name=names.get(str(curr),DEFAULT_QUEUES[str(curr)]["name"])
+cur_nick=nicknames.get(str(curr),"")
 
-        ctk.CTkLabel(self.minmax_frame, text="วันหมดอายุจริง (Target Expire Date):", font=ctk.CTkFont(family="Prompt", size=12)).pack(anchor="w", pady=2)
-        
-        # แก้ไขจุดนี้เป็น placeholder_text เรียบร้อยแล้ว
-        self.target_date_entry = ctk.CTkEntry(self.minmax_frame, placeholder_text="YYYY-MM-DD", font=ctk.CTkFont(family="Prompt", size=12))
-        self.target_date_entry.insert(0, dt.date.today().strftime('%Y-%m-%d'))
-        self.target_date_entry.pack(fill="x", pady=2)
+left,right=st.columns([1.05,1.95], gap="large")
+with left:
+    st.markdown(f'<div class="current"><div class="label">NOW SERVING</div><div class="number">#{curr}</div><div class="company">{cur_name}{(" · "+cur_nick) if cur_nick else ""}</div><div class="subtle">กำลังเรียกคิวปัจจุบัน</div></div>', unsafe_allow_html=True)
+    st.caption(f"อัปเดตโดย {data.get('updated_by') or '—'} · {str(data.get('updated_at') or '')[:19].replace('T',' ')} UTC")
+    a,b=st.columns(2)
+    if a.button("− ลดคิว", use_container_width=True):
+        candidates=[i for i in range(1,6) if active.get(str(i),True)]
+        if candidates:
+            data["current_queue"]=max((x for x in candidates if x<curr),default=candidates[-1]); db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (ลดคิว)"); st.rerun()
+    if b.button("↺ รีเซ็ตคิว", use_container_width=True):
+        candidates=[i for i in range(1,6) if active.get(str(i),True)]
+        if candidates: data["current_queue"]=candidates[0]; db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (รีเซ็ต)"); st.rerun()
+    if st.button("➜ ผ่าน / เรียกคิวถัดไป", type="primary", use_container_width=True):
+        candidates=[i for i in range(1,6) if active.get(str(i),True)]
+        if candidates:
+            data["current_queue"]=next((i for i in candidates if i>curr),candidates[0]); db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (เปลี่ยนคิว)"); st.rerun()
+    st.markdown("#### จัดการรายการคิว")
+    with st.expander("แก้ชื่อคิว / ชื่อเรียก", expanded=False):
+        for q in range(1,6):
+            key=str(q)
+            st.markdown(f"**คิว #{q}**")
+            n1,n2=st.columns(2)
+            names[key]=n1.text_input("ชื่อบริษัท", value=names.get(key,DEFAULT_QUEUES[key]["name"]), key=f"name{q}")
+            nicknames[key]=n2.text_input("ชื่อเล่น", value=nicknames.get(key,""), key=f"nick{q}")
+            st.divider()
+        if st.button("บันทึกชื่อคิว", use_container_width=True):
+            data["custom_names"]=names; data["nicknames"]=nicknames; db.save(data,(editor.strip() or "เจ้าหน้าที่")+" (แก้ชื่อ)"); st.rerun()
 
-        ctk.CTkLabel(self.minmax_frame, text="MIN Days / MAX Days:", font=ctk.CTkFont(family="Prompt", size=12)).pack(anchor="w", pady=(8, 2))
-        minmax_inputs = ctk.CTkFrame(self.minmax_frame, fg_color="transparent")
-        minmax_inputs.pack(fill="x", pady=2)
-        self.min_days_entry = ctk.CTkEntry(minmax_inputs, width=130, font=ctk.CTkFont(family="Prompt", size=12))
-        self.min_days_entry.insert(0, "730")
-        self.min_days_entry.pack(side="left")
-        self.max_days_entry = ctk.CTkEntry(minmax_inputs, width=130, font=ctk.CTkFont(family="Prompt", size=12))
-        self.max_days_entry.insert(0, "1095")
-        self.max_days_entry.pack(side="right")
-
-        self.calc_btn = ctk.CTkButton(self.minmax_frame, text="🔍 ตรวจสอบเกณฑ์อายุสินค้า", command=self.run_expiry_check, font=ctk.CTkFont(family="Prompt", size=13, weight="bold"), fg_color="#4F46E5", hover_color="#4338CA")
-        self.calc_btn.pack(fill="x", pady=(15, 5))
-
-        self.result_box = ctk.CTkTextbox(self.minmax_frame, height=110, font=ctk.CTkFont(family="Prompt", size=12))
-        self.result_box.pack(fill="x", pady=5)
-        self.result_box.insert("0.0", "ผลลัพธ์การตรวจสอบจะแสดงที่นี่...")
-        self.result_box.configure(state="disabled")
-
-        # ฝั่งขวา
-        self.right_frame = ctk.CTkFrame(self, corner_radius=15)
-        self.right_frame.grid(row=0, column=1, padx=(0, 15), pady=15, sticky="nsew")
-        self.right_frame.grid_rowconfigure(3, weight=1)
-
-        top_bar = ctk.CTkFrame(self.right_frame, fg_color="transparent")
-        top_bar.pack(fill="x", padx=20, pady=(15, 5))
-        ctk.CTkLabel(top_bar, text="📢 Dashboard ระบบรันคิว (DCSB)", font=ctk.CTkFont(family="Prompt", size=18, weight="bold")).pack(side="left")
-        
-        user_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
-        user_frame.pack(side="right")
-        ctk.CTkLabel(user_frame, text="ผู้ใช้งาน:", font=ctk.CTkFont(family="Prompt", size=12)).pack(side="left", padx=5)
-        self.username_entry = ctk.CTkEntry(user_frame, width=110, font=ctk.CTkFont(family="Prompt", size=12))
-        self.username_entry.insert(0, "เจ้าหน้าที่ 1")
-        self.username_entry.pack(side="left")
-
-        self.current_q_frame = ctk.CTkFrame(self.right_frame, corner_radius=12, fg_color=("#3B82F6", "#1E3A8A"))
-        self.current_q_frame.pack(fill="x", padx=20, pady=10)
-
-        self.curr_title_lbl = ctk.CTkLabel(self.current_q_frame, text="กำลังเรียกคิวปัจจุบัน", font=ctk.CTkFont(family="Prompt", size=12, weight="bold"), text_color="#E0E7FF")
-        self.curr_title_lbl.pack(pady=(10, 0))
-        self.curr_num_lbl = ctk.CTkLabel(self.current_q_frame, text="#1", font=ctk.CTkFont(family="Prompt", size=48, weight="bold"), text_color="#FFFFFF")
-        self.curr_num_lbl.pack(pady=0)
-        self.curr_name_lbl = ctk.CTkLabel(self.current_q_frame, text="SAHAPAT", font=ctk.CTkFont(family="Prompt", size=20, weight="bold"), text_color="#FFFFFF")
-        self.curr_name_lbl.pack(pady=(0, 10))
-
-        ctrl_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
-        ctrl_frame.pack(fill="x", padx=20, pady=5)
-        
-        ctk.CTkButton(ctrl_frame, text="➖ ลดคิว", command=lambda: self.change_queue(-1), font=ctk.CTkFont(family="Prompt", size=13, weight="bold"), width=150, fg_color="#64748B", hover_color="#475569").pack(side="left", expand=True, padx=5)
-        ctk.CTkButton(ctrl_frame, text="🔄 รีเซ็ตคิว", command=self.reset_queue, font=ctk.CTkFont(family="Prompt", size=13, weight="bold"), width=150, fg_color="#D97706", hover_color="#B45309").pack(side="left", expand=True, padx=5)
-        ctk.CTkButton(ctrl_frame, text="⏩ ผ่าน / เพิ่มคิวถัดไป", command=lambda: self.change_queue(1), font=ctk.CTkFont(family="Prompt", size=13, weight="bold"), width=180, fg_color="#059669", hover_color="#047857").pack(side="left", expand=True, padx=5)
-
-        self.grid_cards_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
-        self.grid_cards_frame.pack(fill="both", expand=True, padx=20, pady=10)
-        self.grid_cards_frame.grid_columnconfigure((0,1,2,3,4), weight=1)
-        self.grid_cards_frame.grid_rowconfigure(0, weight=1)
-
-        self.card_widgets = {}
-        for i in range(1, 6):
-            c_frame = ctk.CTkFrame(self.grid_cards_frame, corner_radius=10, border_width=1, border_color="#CBD5E1")
-            c_frame.grid(row=0, column=i-1, sticky="nsew", padx=4, pady=4)
-            
-            lbl_num = ctk.CTkLabel(c_frame, text=f"#{i}", font=ctk.CTkFont(family="Prompt", size=14, weight="bold"))
-            lbl_num.pack(pady=(8, 2))
-            lbl_name = ctk.CTkLabel(c_frame, text="-", font=ctk.CTkFont(family="Prompt", size=13, weight="bold"))
-            lbl_name.pack(pady=2)
-            lbl_status = ctk.CTkLabel(c_frame, text="รอ", font=ctk.CTkFont(family="Prompt", size=11))
-            lbl_status.pack(pady=2)
-
-            btn_toggle = ctk.CTkButton(c_frame, text="เปิด/ปิด", width=70, height=24, font=ctk.CTkFont(family="Prompt", size=10), command=lambda q=i: self.toggle_queue_status(q))
-            btn_toggle.pack(pady=(5, 8))
-
-            self.card_widgets[i] = {"frame": c_frame, "name": lbl_name, "status": lbl_status, "toggle": btn_toggle}
-
-    def run_expiry_check(self):
-        try:
-            target_str = self.target_date_entry.get().strip()
-            min_d = int(self.min_days_entry.get().strip())
-            max_d = int(self.max_days_entry.get().strip())
-            
-            target_date = dt.datetime.strptime(target_str, "%Y-%m-%d").date()
-            today = dt.date.today()
-            
-            min_expire = today + dt.timedelta(days=min_d)
-            max_expire = today + dt.timedelta(days=max_d)
-            diff_days = (target_date - min_expire).days
-
-            res_text = f"ช่วงรับได้: {min_expire.strftime('%d/%m/%Y')} ถึง {max_expire.strftime('%d/%m/%Y')}\n"
-            if target_date < min_expire:
-                res_text += f"❌ Reject: อายุสั้นกว่าเกณฑ์ MIN อยู่ {abs(diff_days):,} วัน"
-            elif target_date > max_expire:
-                over_days = (target_date - max_expire).days
-                res_text += f"⚠️ Check: อายุเกินเกณฑ์ MAX อยู่ {over_days:,} วัน"
-            else:
-                res_text += "✔ Accept: อายุสินค้าผ่านเกณฑ์ปกติ"
-
-            self.result_box.configure(state="normal")
-            self.result_box.delete("0.0", "end")
-            self.result_box.insert("0.0", res_text)
-            self.result_box.configure(state="disabled")
-        except Exception as ex:
-            self.result_box.configure(state="normal")
-            self.result_box.delete("0.0", "end")
-            self.result_box.insert("0.0", "เกิดข้อผิดพลาด:\nรูปแบบวันที่ต้องเป็น YYYY-MM-DD")
-            self.result_box.configure(state="disabled")
-
-    def load_data(self):
-        data = get_db_data()
-        if data:
-            curr = data["current_queue"]
-            active = data["active_queues"]
-            nicknames = data["nicknames"]
-            custom_names = data["custom_names"]
-            
-            cfg = self.DEFAULT_QUEUES.get(curr, self.DEFAULT_QUEUES[1])
-            comp_name = custom_names.get(str(curr), cfg["name"])
-            nick = nicknames.get(str(curr), "")
-            full_display = f"{comp_name} {f'({nick})' if nick else ''}"
-
-            self.curr_num_lbl.configure(text=f"#{curr}")
-            self.curr_name_lbl.configure(text=full_display)
-
-            for i in range(1, 6):
-                is_act = active.get(str(i), True)
-                c_name = custom_names.get(str(i), self.DEFAULT_QUEUES[i]["name"])
-                w = self.card_widgets[i]
-                w["name"].configure(text=c_name)
-                
-                if not is_act:
-                    w["status"].configure(text="❌ ปิดใช้งาน", text_color="gray")
-                    w["frame"].configure(fg_color=("#F1F5F9", "#0F172A"))
-                elif i == curr:
-                    w["status"].configure(text="📢 กำลังเรียก", text_color="#2563EB")
-                    w["frame"].configure(fg_color=("#DBEAFE", "#1E3A8A"))
-                elif i < curr:
-                    w["status"].configure(text="✔ ผ่านแล้ว", text_color="#10B981")
-                    w["frame"].configure(fg_color=("#ECFDF5", "#064E3B"))
-                else:
-                    w["status"].configure(text="⏳ รอคิว", text_color="#D97706")
-                    w["frame"].configure(fg_color=("#FEF3C7", "#78350F"))
-
-    def change_queue(self, direction):
-        data = get_db_data()
-        if not data: return
-        
-        curr = data["current_queue"]
-        active = data["active_queues"]
-        nxt = curr + direction
-        
-        for _ in range(5):
-            if nxt > 5: nxt = 1
-            if nxt < 1: nxt = 5
-            if active.get(str(nxt), True):
-                break
-            nxt += direction
-
-        data["current_queue"] = nxt
-        editor = self.username_entry.get().strip() or "เจ้าหน้าที่"
-        save_db_data(data, f"{editor} (เปลี่ยนคิว)")
-        
-        q_info = self.DEFAULT_QUEUES.get(nxt, self.DEFAULT_QUEUES[1])
-        speak_queue_text(q_info["readAs"])
-        self.load_data()
-
-    def reset_queue(self):
-        data = get_db_data()
-        if not data: return
-        active = data["active_queues"]
-        
-        first_act = 1
-        for i in range(1, 6):
-            if active.get(str(i), True):
-                first_act = i
-                break
-        
-        data["current_queue"] = first_act
-        editor = self.username_entry.get().strip() or "เจ้าหน้าที่"
-        save_db_data(data, f"{editor} (รีเซ็ตคิว)")
-        self.load_data()
-
-    def toggle_queue_status(self, q_no):
-        data = get_db_data()
-        if not data: return
-        active = data["active_queues"]
-        current_status = active.get(str(q_no), True)
-        active[str(q_no)] = not current_status
-        
-        data["active_queues"] = active
-        editor = self.username_entry.get().strip() or "เจ้าหน้าที่"
-        save_db_data(data, f"{editor} (สลับสถานะคิว #{q_no})")
-        self.load_data()
-
-if __name__ == "__main__":
-    app = DCSBDesktopApp()
-    app.mainloop()
+with right:
+    st.markdown("#### ภาพรวมคิว")
+    cols=st.columns(5, gap="small")
+    for q in range(1,6):
+        key=str(q); is_on=active.get(key,True)
+        status="ปิดใช้งาน" if not is_on else "กำลังเรียก" if q==curr else "ผ่านแล้ว" if q<curr else "รอคิว"
+        cls="off" if not is_on else "active" if q==curr else "done" if q<curr else ""
+        with cols[q-1]:
+            st.markdown(f'<div class="card {cls}"><div class="q">QUEUE 0{q}</div><div class="nm">{names.get(key,DEFAULT_QUEUES[key]["name"])}</div><div class="st">● {status}</div></div>', unsafe_allow_html=True)
+            if st.button("ปิดคิว" if is_on else "เปิดคิว", key=f"toggle{q}", use_container_width=True):
+                active[key]=not is_on
+                if not active[key] and curr==q:
+                    candidates=[i for i in range(1,6) if active.get(str(i),True)]
+                    if candidates: data["current_queue"]=candidates[0]
+                data["active_queues"]=active; db.save(data,(editor.strip() or "เจ้าหน้าที่")+f" (สลับคิว #{q})"); st.rerun()
+    enabled=sum(1 for q in range(1,6) if active.get(str(q),True))
+    m1,m2,m3=st.columns(3)
+    m1.metric("คิวที่เปิดใช้งาน",f"{enabled} / 5")
+    m2.metric("คิวปัจจุบัน",f"#{curr}")
+    m3.metric("ระบบ", "LIVE" if USE_SUPABASE else "LOCAL PREVIEW")
+    if not USE_SUPABASE:
+        st.warning("ขณะนี้กำลังใช้ฐานข้อมูลในเครื่องสำหรับทดลอง ผู้ใช้ที่เปิดคนละเครื่องจะยังไม่เห็นข้อมูลร่วมกัน จนกว่าจะตั้งค่า Supabase ตาม README")
