@@ -225,8 +225,12 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
 
     st.markdown('<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงาน</div>', unsafe_allow_html=True)
     with st.container(border=True):
-        st.markdown('<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
-                    '<div class="section-caption">เปรียบเทียบประมาณการกับยอดรับทั้งหมดของวัน</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
+        '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>',
+        unsafe_allow_html=True,
+    )
+    
         col1, col2 = st.columns(2)
                     '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
