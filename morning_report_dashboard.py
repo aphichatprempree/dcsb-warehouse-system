@@ -244,7 +244,7 @@ def metric_card(
 st.markdown(
     '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · MORNING'
     ' BRIEFING</div><div class="hero-title">📊'
-    " แดชบอร์ดสรุปรายงานประชุมเช้า</div><div"
+    " สรุปงานรับและงานค้างส่ง(00.00-22.00 น.)</div><div"
     ' class="hero-subtitle">ภาพรวมการรับสินค้าและข้อมูลประกอบการประชุมประจำวัน</div></div>',
     unsafe_allow_html=True,
 )
