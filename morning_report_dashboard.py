@@ -246,7 +246,7 @@ if uploaded_rp42:
     )
     st.sidebar.success(f"RP42 สำเร็จ ({len(df_rp42):,} แถว)")
   except Exception as e:
-    st.sidebar.error(f"RP03 Error: {e}")
+    st.sidebar.error(f"RP42 Error: {e}")
 
 st.sidebar.caption("DCSB Warehouse · Morning Report")
 
@@ -272,14 +272,14 @@ if sheet_selection == "รายงานการรับสินค้า (�
       (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
   )
 
-  # --- ส่วนเน้นพิเศษ: แสดง 2 ตัวหลักคู่กันขนาดใหญ่พิเศษ ---
+  # --- ส่วนเน้นพิเศษ: แสดงยอดงาน Complete รับกะดึก คู่กับ Supplier กะเช้า ---
   st.markdown(
       f"""
     <div class="focus-grid">
         <div class="focus-card">
-            <div class="focus-label">📊 (%) สรุปงานค้างรับคงเหลือ</div>
-            <div class="focus-value">{pct_remaining:.2f}%</div>
-            <div class="focus-unit">จากยอดประมาณการรับทั้งหมด ({total_remaining:,} Pallets)[cite: 8]</div>
+            <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
+            <div class="focus-value">{complete_night:,} <span style="font-size: 1.5rem;">Pallets</span></div>
+            <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
         </div>
         <div class="focus-card alert">
             <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
