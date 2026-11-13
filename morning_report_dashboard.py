@@ -202,7 +202,7 @@ sheet_selection = st.sidebar.radio(
 )
 st.sidebar.markdown("---")
 report_date = st.sidebar.date_input(
-    "ประจำวันที่", value=pd.to_datetime("2026-11-13")
+    "ประจำวันที่", value=pd.to_datetime("2026-11-12")
 )
 
 st.sidebar.markdown("---")
@@ -277,7 +277,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
       (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
   )
 
-  # การ์ดเน้นพิเศษ: ยอด Complete รับกะดึก คู่กับ Supplier กะเช้า
   st.markdown(
       f"""
     <div class="focus-grid">
@@ -479,49 +478,118 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 
 # ==========================================
 # ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
+# อ้างอิงตามกราฟเก่า: กราฟแท่งแนวตั้ง (สรุปงานรับและงานค้างส่ง) และกราฟแท่งแนวนอน (สาเหตุงานไม่ได้รับ)
 # ==========================================
 else:
   st.subheader(
-      "📋 ชีต: สรุปงานรับและงานค้างส่ง (ย้อนหลัง / รายละเอียดเพิ่มเติม)"
+      f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {report_date.strftime('%d/%m/%Y')}"
   )
-  st.info("ส่วนนี้แสดงตารางข้อมูลย้อนหลังและกราฟแนวโน้มการรับสินค้าประจำวัน")
-
-  history_data = pd.DataFrame({
-      "วันที่": ["11/11/2026", "12/11/2026", "13/11/2026"],
-      "ประมาณการทั้งหมด": [6000, 6100, 6058],
-      "รับกะดึก": [4100, 4200, 4240],
-      "รับกะเช้า": [1900, 1900, 1818],
-      "งานคงเหลือ": [2500, 2450, 2425],
-  })
-
-  st.dataframe(history_data, use_container_width=True)
-
-  # เพิ่มกราฟแสดงแนวโน้มย้อนหลัง
-  st.markdown("---")
   st.markdown(
-      '<div class="chart-title">📈 กราฟแสดงแนวโน้มงานรับและงานคงเหลือย้อนหลัง</div>',
-      unsafe_allow_html=True,
+      "แสดงผลเปรียบเทียบตามรูปแบบกราฟต้นฉบับเดิม (ปรับปรุงให้สวยงามและอ่านง่ายขึ้น)"
   )
 
-  fig_history = px.bar(
-      history_data,
-      x="วันที่",
-      y=["ประมาณการทั้งหมด", "รับกะดึก", "รับกะเช้า", "งานคงเหลือ"],
-      barmode="group",
-      color_discrete_sequence=["#174b3a", "#27845c", "#82a957", "#c87568"],
-  )
-  fig_history.update_layout(
-      margin=dict(t=20, b=20, l=20, r=20),
-      legend_title_text="ประเภทรายการ",
-      xaxis_title="วันที่",
-      yaxis_title="จำนวน Pallets",
-  )
-  st.plotly_chart(fig_history, use_container_width=True)
+  # กำหนดค่าตัวเลขจำลองหรือเชื่อมโยงค่าสำหรับการแสดงกราฟย้อนหลัง
+  hist_total_recv = 5904
+  hist_complete = 5722
+  hist_extra = 138
+  hist_not_recv = 323
+
+  hist_delayed = 0
+  hist_not_po = 73
+  hist_not_billed = 250
+
+  col_chart1, col_chart2 = st.columns(2)
+
+  with col_chart1:
+    with st.container(border=True):
+      st.markdown(
+          '<div class="chart-title">📊 สรุปงานรับและงานค้างส่ง</div>',
+          unsafe_allow_html=True,
+      )
+      df_bar_v = pd.DataFrame({
+          "ประเภทงาน": [
+              "งานรับทั้งหมด (16.10 น.)",
+              "งาน Complete (22.00 น.)",
+              "งานนอกรอบ",
+              "งานไม่ได้รับ",
+          ],
+          "จำนวน (Pallets)": [
+              hist_total_recv,
+              hist_complete,
+              hist_extra,
+              hist_not_recv,
+          ],
+          "สี": ["#27845c", "#facc15", "#d97706", "#dc2626"],
+      })
+      fig_v = px.bar(
+          df_bar_v,
+          x="ประเภทงาน",
+          y="จำนวน (Pallets)",
+          text="จำนวน (Pallets)",
+          color="ประเภทงาน",
+          color_discrete_map={
+              "งานรับทั้งหมด (16.10 น.)": "#27845c",
+              "งาน Complete (22.00 น.)": "#eab308",
+              "งานนอกรอบ": "#d97706",
+              "งานไม่ได้รับ": "#dc2626",
+          },
+      )
+      fig_v.update_traces(textposition="outside")
+      fig_v.update_layout(
+          margin=dict(t=20, b=20, l=20, r=20),
+          showlegend=False,
+          xaxis_title="",
+          yaxis_title="Pallets",
+      )
+      st.plotly_chart(fig_v, use_container_width=True)
+
+  with col_chart2:
+    with st.container(border=True):
+      st.markdown(
+          '<div class="chart-title">🚨 สาเหตุงานไม่ได้รับ</div>',
+          unsafe_allow_html=True,
+      )
+      df_bar_h = pd.DataFrame({
+          "สาเหตุ": [
+              "งานไม่ได้รับทั้งหมด",
+              "ยังไม่ยื่นบิล",
+              "ส่งไม่ครบตาม PO",
+              "เลื่อนส่ง",
+          ],
+          "จำนวน (Pallets)": [
+              hist_not_recv,
+              hist_not_billed,
+              hist_not_po,
+              hist_delayed,
+          ],
+      })
+      fig_h = px.bar(
+          df_bar_h,
+          x="จำนวน (Pallets)",
+          y="สาเหตุ",
+          text="จำนวน (Pallets)",
+          orientation="h",
+          color="สาเหตุ",
+          color_discrete_map={
+              "งานไม่ได้รับทั้งหมด": "#fca5a5",
+              "ยังไม่ยื่นบิล": "#10b981",
+              "ส่งไม่ครบตาม PO": "#facc15",
+              "เลื่อนส่ง": "#94a3b8",
+          },
+      )
+      fig_h.update_traces(textposition="outside")
+      fig_h.update_layout(
+          margin=dict(t=20, b=20, l=20, r=20),
+          showlegend=False,
+          xaxis_title="Pallets",
+          yaxis_title="",
+      )
+      st.plotly_chart(fig_h, use_container_width=True)
 
   st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
   daily_note = st.text_area(
       "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
-      value="การรับสินค้ากะดึกดำเนินการเรียบร้อยตามแผนงาน",
+      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
   )
   if st.button("บันทึกข้อมูลหมายเหตุ"):
     st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
