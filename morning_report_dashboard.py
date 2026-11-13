@@ -133,7 +133,7 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
 .report-date { font-size: .82rem; font-weight: 500; color: #e0eee5; }
 .report-grid {
     display: grid;
-    grid-template-columns: repeat(13, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 0;
 }
 .report-cell {
@@ -149,7 +149,7 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
 .report-cell:nth-child(4n + 2) { background: #f6f8e9; }
 .report-cell:nth-child(4n + 3) { background: #e8f3ee; }
 .report-cell:nth-child(4n) { background: #fdf5f2; }
-.report-label { color: #53685c; font-size: .63rem; line-height: 1.2; min-height: 32px; font-weight: 500; }
+.report-label { color: #53685c; font-size: .65rem; line-height: 1.2; min-height: 32px; font-weight: 500; }
 .report-value { color: var(--forest); font-size: 1.05rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .report-value.alert { color: #a4443d; }
 
@@ -165,7 +165,7 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
 .summary-title { color: var(--forest); font-size: 1.2rem; font-weight: 700; margin: 22px 0 12px; }
 
 @media (max-width: 1200px) {
-    .report-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .report-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .focus-grid { grid-template-columns: 1fr; }
 }
 
@@ -477,27 +477,61 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
       )
 
 # ==========================================
-# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
-# อ้างอิงตามกราฟเก่า: กราฟแท่งแนวตั้ง (สรุปงานรับและงานค้างส่ง) และกราฟแท่งแนวนอน (สาเหตุงานไม่ได้รับ)
+# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) พร้อมฟอร์มแก้ไขข้อมูล
 # ==========================================
 else:
   st.subheader(
-      f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {report_date.strftime('%d/%m/%Y')}"
+      f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {report_date.strftime('%d/%m/%Y')} (ย้อนหลัง)"
   )
   st.markdown(
-      "แสดงผลเปรียบเทียบตามรูปแบบกราฟต้นฉบับเดิม (ปรับปรุงให้สวยงามและอ่านง่ายขึ้น)"
+      "สามารถปรับแก้ตัวเลขด้านล่างนี้ได้ตามต้องการ ตารางและกราฟจะอัปเดตอัตโนมัติ"
   )
 
-  # กำหนดค่าตัวเลขจำลองหรือเชื่อมโยงค่าสำหรับการแสดงกราฟย้อนหลัง
-  hist_total_recv = 5904
-  hist_complete = 5722
-  hist_extra = 138
-  hist_not_recv = 323
+  # ดึงค่าผ่าน Session State สำหรับหน้าย้อนหลัง
+  hist_inv = st.session_state.get("hist_inv", 6126)
+  hist_total_recv = st.session_state.get("hist_total_recv", 5904)
+  hist_complete = st.session_state.get("hist_complete", 5722)
+  hist_extra = st.session_state.get("hist_extra", 138)
 
-  hist_delayed = 0
-  hist_not_po = 73
-  hist_not_billed = 250
+  hist_delayed = st.session_state.get("hist_delayed", 0)
+  hist_not_po = st.session_state.get("hist_not_po", 73)
+  hist_not_billed = st.session_state.get("hist_not_billed", 250)
 
+  # คำนวณอัตโนมัติตามสูตร
+  hist_not_recv = hist_delayed + hist_not_po + hist_not_billed
+  hist_pct_not_recv = (
+      (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
+  )
+
+  # ตารางสรุป 12 ช่อง (ตามภาพต้นฉบับ)
+  hist_report_values = [
+      ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
+      ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
+      ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
+      ("งานนอกรอบ Complete", f"{hist_extra:,}", False),
+      ("งานไม่ได้รับ", f"{hist_not_recv:,}", True),
+      ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
+      ("เลื่อนส่ง", f"{hist_delayed:,}", False),
+      ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
+      ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
+      ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
+  ]
+
+  hist_cells = "".join(
+      f'<div class="report-cell"><div class="report-label">{label}</div>'
+      f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+      for label, value, alert in hist_report_values
+  )
+
+  st.markdown(
+      f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
+      f' ประจำวันที่ {report_date.strftime("%d/%m/%Y")} <span'
+      f' class="report-date">(00.00-22.00 น.)</span></div><div'
+      f' class="report-grid" style="grid-template-columns: repeat(10, minmax(0, 1fr));">{hist_cells}</div></div>',
+      unsafe_allow_html=True,
+  )
+
+  # ส่วนแสดงกราฟเปรียบเทียบ 2 ฝั่ง
   col_chart1, col_chart2 = st.columns(2)
 
   with col_chart1:
@@ -519,7 +553,6 @@ else:
               hist_extra,
               hist_not_recv,
           ],
-          "สี": ["#27845c", "#facc15", "#d97706", "#dc2626"],
       })
       fig_v = px.bar(
           df_bar_v,
@@ -586,10 +619,41 @@ else:
       )
       st.plotly_chart(fig_h, use_container_width=True)
 
-  st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
-  daily_note = st.text_area(
-      "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
-      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
+  # ส่วนฟอร์มสำหรับปรับแก้ข้อมูลหน้าย้อนหลัง
+  st.markdown(
+      '<div class="summary-title">✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)</div>',
+      unsafe_allow_html=True,
   )
-  if st.button("บันทึกข้อมูลหมายเหตุ"):
-    st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
+  with st.container(border=True):
+    hc1, hc2, hc3, hc4 = st.columns(4)
+    with hc1:
+      hist_inv = st.number_input(
+          "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
+      )
+      hist_total_recv = st.number_input(
+          "งานรับทั้งหมด (16.10 น.)",
+          value=hist_total_recv,
+          step=1,
+          key="hist_total_recv",
+      )
+    with hc2:
+      hist_complete = st.number_input(
+          "งาน Complete (22.00 น.)",
+          value=hist_complete,
+          step=1,
+          key="hist_complete",
+      )
+      hist_extra = st.number_input(
+          "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
+      )
+    with hc3:
+      hist_delayed = st.number_input(
+          "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
+      )
+      hist_not_po = st.number_input(
+          "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
+      )
+    with hc4:
+      hist_not_billed = st.number_input(
+          "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
+      )
