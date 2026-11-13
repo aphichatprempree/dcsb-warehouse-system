@@ -353,4 +353,85 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
     with left_chart:
       st.markdown(
           f'<div class="chart-panel"><div class="chart-title">สรุปงานรับและงานค้าง</div>'
-          f'<div class="vchart">{vertical_bars}
+          f'<div class="vchart">{vertical_bars}</div></div>',
+          unsafe_allow_html=True,
+      )
+    with right_chart:
+      st.markdown(
+          f'<div class="chart-panel"><div class="chart-title">สาเหตุงานไม่ได้รับ</div>'
+          f'<div class="hchart">{horizontal_bars}</div></div>',
+          unsafe_allow_html=True,
+      )
+
+    # ส่วนกรอกข้อมูลจัดเรียงตามต้นฉบับ Excel
+    st.markdown(
+        '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงาน</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+      st.markdown(
+          '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
+          '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>',
+          unsafe_allow_html=True,
+      )
+
+      col1, col2, col3 = st.columns(3)
+      with col1:
+        inv_pallets = st.number_input(
+            "ประมาณการรับ (Inventory)", value=inv_pallets, step=1, key="inv_pallets"
+        )
+      with col2:
+        total_received = st.number_input(
+            "งานรับทั้งหมด (16.10 น.)",
+            value=total_received,
+            step=1,
+            key="total_received",
+        )
+      with col3:
+        complete_pallets = st.number_input(
+            "งาน Complete (22.00 น.)",
+            value=complete_pallets,
+            step=1,
+            key="complete_pallets",
+        )
+
+      col4, col5 = st.columns(2)
+      with col4:
+        extra_work = st.number_input(
+            "งานนอกรอบ Complete", value=extra_work, step=1, key="extra_work"
+        )
+      with col5:
+        delayed_delivery = st.number_input(
+            "เลื่อนส่ง", value=delayed_delivery, step=1, key="delayed_delivery"
+        )
+
+      col6, col7 = st.columns(2)
+      with col6:
+        not_received_po = st.number_input(
+            "ส่งไม่ครบตาม PO", value=not_received_po, step=1, key="not_received_po"
+        )
+      with col7:
+        not_billed = st.number_input(
+            "ยังไม่ยื่นบิล", value=not_billed, step=1, key="not_billed"
+        )
+
+else:
+  st.subheader("📋 ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม (Sheet 2)")
+  st.info("ส่วนนี้จัดเตรียมไว้สำหรับบันทึกประวัติย้อนหลังและข้อมูลรายละเอียด")
+
+  history_data = pd.DataFrame({
+      "วันที่": ["10/11/2026", "11/11/2026", "12/11/2026"],
+      "ประมาณการรับ": [6000, 6100, 6126],
+      "งานรับทั้งหมด": [5800, 5850, 5904],
+      "งาน Complete": [5600, 5680, 5722],
+      "งานไม่ได้รับ": [200, 170, 323],
+  })
+  st.dataframe(history_data, use_container_width=True)
+
+  st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
+  daily_note = st.text_area(
+      "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
+      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
+  )
+  if st.button("บันทึกข้อมูลหมายเหตุ"):
+    st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
