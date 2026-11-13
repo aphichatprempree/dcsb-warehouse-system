@@ -1,10 +1,9 @@
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 # ตั้งค่าหน้าเว็บแดชบอร์ด
 st.set_page_config(
-    page_title="รายงานการรับสินค้า | DCSB Warehouse",
+    page_title="รายงานประชุมเช้า | DCSB Warehouse",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -42,77 +41,49 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 .block-container {
     padding-top: 2rem;
     padding-bottom: 3rem;
-    max-width: 1550px;
+    max-width: 1500px;
 }
 h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
+h1 { font-size: 2rem !important; font-weight: 700 !important; }
+h2 { font-size: 1.35rem !important; font-weight: 700 !important; }
+h3 { font-size: 1.05rem !important; font-weight: 600 !important; }
 
 [data-testid="stNumberInput"] > label {
-    font-size: .88rem;
+    font-size: .9rem;
     font-weight: 500;
     color: #40564a;
 }
-[data-testid="stNumberInput"] input {
+[data-testid="stNumberInput"] input, [data-testid="stTextArea"] textarea {
     border-radius: 10px;
     border-color: var(--line);
     background: white;
 }
-[data-testid="stNumberInput"] input:focus {
+[data-testid="stNumberInput"] input:focus, [data-testid="stTextArea"] textarea:focus {
     border-color: var(--green);
     box-shadow: 0 0 0 1px var(--green);
 }
 .hero {
     background: linear-gradient(115deg, #174b3a 0%, #267653 72%, #438966 100%);
     border-radius: 20px;
-    padding: 24px 30px;
+    padding: 26px 30px;
     color: white;
     box-shadow: 0 12px 28px rgba(23, 75, 58, .14);
     margin-bottom: 22px;
 }
 .hero-kicker { color: #c8e1d1; font-size: .82rem; font-weight: 500; letter-spacing: .04em; }
-.hero-title { color: white; font-size: 1.65rem; font-weight: 700; margin: 4px 0 2px; }
-.hero-subtitle { color: #e0eee5; font-size: .92rem; }
+.hero-title { color: white; font-size: 1.75rem; font-weight: 700; margin: 4px 0 2px; }
+.hero-subtitle { color: #e0eee5; font-size: .95rem; }
 
-/* Focus Cards สไตล์เน้นพิเศษขนาดใหญ่ */
-.focus-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-bottom: 22px;
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: white;
+    border-color: var(--line) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 14px rgba(30, 67, 48, .035);
+    margin: 14px 0;
 }
-.focus-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f6faf7 100%);
-    border: 2px solid #b8d4c2;
-    border-radius: 16px;
-    padding: 22px 26px;
-    box-shadow: 0 8px 24px rgba(23, 75, 58, 0.08);
-    position: relative;
-    overflow: hidden;
-}
-.focus-card.alert {
-    background: linear-gradient(135deg, #fffcfb 0%, #fef2f2 100%);
-    border-color: #fca5a5;
-}
-.focus-label {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #53685c;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-.focus-card.alert .focus-label { color: #991b1b; }
-.focus-value {
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: var(--forest);
-    line-height: 1.2;
-    margin: 6px 0 2px;
-}
-.focus-card.alert .focus-value { color: #dc2626; }
-.focus-unit {
-    font-size: 0.88rem;
-    color: var(--muted);
-    font-weight: 500;
-}
+.section-heading { color: var(--forest); font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
+.section-caption { color: var(--muted); font-size: .84rem; margin-bottom: 12px; }
+.summary-title { color: var(--forest); font-size: 1.24rem; font-weight: 700; margin: 22px 0 12px; }
 
 .report-wrap {
     background: white;
@@ -127,46 +98,91 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     color: white;
     text-align: center;
     padding: 12px;
-    font-size: 1.08rem;
+    font-size: 1.1rem;
     font-weight: 700;
 }
 .report-date { font-size: .82rem; font-weight: 500; color: #e0eee5; }
 .report-grid {
     display: grid;
-    grid-template-columns: repeat(13, minmax(0, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 0;
 }
 .report-cell {
     border-right: 1px solid #d7e2d9;
     border-top: 1px solid #d7e2d9;
-    padding: 9px 4px 8px;
+    padding: 9px 5px 8px;
     text-align: center;
     background: #fff;
     min-height: 76px;
     box-sizing: border-box;
 }
-.report-cell:nth-child(4n + 1) { background: #edf5ef; }
-.report-cell:nth-child(4n + 2) { background: #f6f8e9; }
-.report-cell:nth-child(4n + 3) { background: #e8f3ee; }
-.report-cell:nth-child(4n) { background: #fdf5f2; }
-.report-label { color: #53685c; font-size: .63rem; line-height: 1.2; min-height: 32px; font-weight: 500; }
-.report-value { color: var(--forest); font-size: 1.05rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.report-cell:nth-child(3n + 1) { background: #edf5ef; }
+.report-cell:nth-child(3n + 2) { background: #f6f8e9; }
+.report-cell:nth-child(3n) { background: #e8f3ee; }
+.report-label { color: #53685c; font-size: .69rem; line-height: 1.25; min-height: 31px; }
+.report-value { color: var(--forest); font-size: 1.12rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .report-value.alert { color: #a4443d; }
 
 .chart-panel {
     background: white;
     border: 1px solid var(--line);
     border-radius: 16px;
-    padding: 20px;
-    min-height: 400px;
+    padding: 18px;
+    min-height: 360px;
     box-shadow: 0 4px 14px rgba(30, 67, 48, .04);
 }
-.chart-title { color: var(--forest); font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; text-align: center; }
-.summary-title { color: var(--forest); font-size: 1.2rem; font-weight: 700; margin: 22px 0 12px; }
+.chart-title { color: var(--forest); font-size: 1.02rem; font-weight: 700; margin-bottom: 14px; }
+.vchart {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 12px;
+    height: 275px;
+    padding: 10px 4px 0;
+    border-bottom: 1px solid #dce5de;
+}
+.vitem {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: center;
+}
+.vvalue { font-size: .84rem; font-weight: 700; color: var(--ink); margin-bottom: 5px; }
+.vbar {
+    width: min(54px, 72%);
+    min-height: 4px;
+    border-radius: 8px 8px 2px 2px;
+    box-shadow: inset 0 -12px 18px rgba(0,0,0,.06);
+}
+.vlabel { min-height: 44px; padding-top: 8px; color: #52655a; font-size: .72rem; line-height: 1.25; }
 
-@media (max-width: 1200px) {
-    .report-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-    .focus-grid { grid-template-columns: 1fr; }
+.hchart { display: flex; flex-direction: column; gap: 19px; padding: 9px 0; }
+.hrow { display: grid; grid-template-columns: minmax(90px, 36%) 1fr; gap: 9px; align-items: center; }
+.hlabel { color: #52655a; font-size: .77rem; line-height: 1.25; text-align: right; }
+.htrack { height: 29px; background: #f0f4f1; border-radius: 0 7px 7px 0; position: relative; }
+.hbar {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 7px 7px 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.hvalue {
+    position: absolute;
+    top: 4px;
+    color: #263b30;
+    font-weight: 700;
+    font-size: .85rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .report-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 .stButton > button {
@@ -177,31 +193,55 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     font-weight: 600;
     padding: .55rem 1rem;
 }
-.stButton > button:hover { background: var(--forest); color: white; }
+.stButton > button:hover {
+    background: var(--forest);
+    color: white;
+    border-color: var(--forest);
+}
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+}
+div[data-testid="stAlert"] { border-radius: 12px; }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
+
+def metric_card(
+    label: str, value: str, unit: str = "Pallets", emphasis: bool = False
+):
+  variant = " emphasis" if emphasis else ""
+  st.markdown(
+      f'<div class="metric-card{variant}"><div class="metric-label">{label}</div>'
+      f'<div class="metric-value">{value}</div><div'
+      f' class="metric-unit">{unit}</div></div>',
+      unsafe_allow_html=True,
+  )
+
+
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT'
-    ' SYSTEM</div><div class="hero-title">📊'
-    " รายงานการรับสินค้าประจำวัน</div><div"
-    ' class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div></div>',
+    '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · MORNING'
+    ' BRIEFING</div><div class="hero-title">📊'
+    " สรุปงานรับและงานค้างส่ง(00.00-22.00 น.)</div><div"
+    ' class="hero-subtitle">ภาพรวมการรับสินค้าและข้อมูลประกอบการประชุมประจำวัน</div></div>',
     unsafe_allow_html=True,
 )
 
-# Sidebar เมนูและ Import ไฟล์
+# เมนูด้านข้าง Sidebar
 st.sidebar.header("📁 เลือกมุมมองข้อมูล")
 sheet_selection = st.sidebar.radio(
     "เลือกชีต:",
-    ["รายงานการรับสินค้า (กะเช้า)", "ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม"],
+    ["สถานการณ์การรับ (กะเช้า)", "ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม"],
 )
 st.sidebar.markdown("---")
 report_date = st.sidebar.date_input(
-    "ประจำวันที่", value=pd.to_datetime("2026-11-13")
+    "ประจำวันที่", value=pd.to_datetime("2026-11-12")
 )
 
+# ส่วน Import ไฟล์รายงาน 3 ตัวใน Sidebar
 st.sidebar.markdown("---")
 st.sidebar.header("📥 Import ไฟล์รายงานระบบ")
 uploaded_rp01 = st.sidebar.file_uploader(
@@ -250,249 +290,174 @@ if uploaded_rp42:
 
 st.sidebar.caption("DCSB Warehouse · Morning Report")
 
-if sheet_selection == "รายงานการรับสินค้า (กะเช้า)":
-  # ดึงค่าจาก Session State หรือค่าเริ่มต้น
-  inv_all = st.session_state.get("inv_all", 6058)
-  night_received = st.session_state.get("night_received", 4240)
-  morning_received = st.session_state.get("morning_received", 1818)
-  complete_night = st.session_state.get("complete_night", 4475)
-  work_night = st.session_state.get("work_night", 3507)
-  work_morning = st.session_state.get("work_morning", 310)
-  extra_work = st.session_state.get("extra_work", 658)
-
-  pct_night_received = (
-      (night_received / inv_all * 100) if inv_all > 0 else 0
-  )
-  total_remaining = st.session_state.get("total_remaining", 2425)
-  recv_start = st.session_state.get("recv_start", 473)
-  in_transit = st.session_state.get("in_transit", 268)
-  sup_night_missing = st.session_state.get("sup_night_missing", 239)
-  sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
-  pct_remaining = (
-      (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
-  )
-
-  # --- ส่วนเน้นพิเศษ: แสดงยอดงาน Complete รับกะดึก คู่กับ Supplier กะเช้า ---
-  st.markdown(
-      f"""
-    <div class="focus-grid">
-        <div class="focus-card">
-            <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
-            <div class="focus-value">{complete_night:,} <span style="font-size: 1.5rem;">Pallets</span></div>
-            <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
-        </div>
-        <div class="focus-card alert">
-            <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
-            <div class="focus-value">{sup_morning_missing:,} <span style="font-size: 1.5rem;">Pallets</span></div>
-            <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
-        </div>
-    </div>
-    """,
-      unsafe_allow_html=True,
-  )
-
-  # ตารางสรุป 13 คอลัมน์ ตามโครงสร้าง Excel ต้นฉบับ
-  report_values = [
-      ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
-      ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
-      ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
-      ("ยอดงาน Complete รับกะดึก (00.00-06.00)", f"{complete_night:,}", False),
-      ("งาน Complete (00.00-06.00)\nงานกะดึก", f"{work_night:,}", False),
-      ("งาน Complete (00.00-06.00)\nงานกะเช้า", f"{work_morning:,}", False),
-      ("งาน Complete (00.00-06.00)\nงานนอกรอบ", f"{extra_work:,}", False),
-      ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
-      ("สรุปงานรับคงเหลือทั้งหมด (Pallets)", f"{total_remaining:,}", True),
-      (
-          "งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)",
-          f"{recv_start:,}",
-          False,
-      ),
-      ("งานรับคงเหลือทั้งหมด\nรอลงสินค้า (InTransit)", f"{in_transit:,}", False),
-      (
-          "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก",
-          f"{sup_night_missing:,}",
-          False,
-      ),
-      (
-          "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า",
-          f"{sup_morning_missing:,}",
-          False,
-      ),
-      ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
-  ]
-
-  cells = "".join(
-      f'<div class="report-cell"><div class="report-label">{label}</div>'
-      f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-      for label, value, alert in report_values
-  )
-
-  st.markdown(
-      f'<div class="report-wrap"><div class="report-head">รายงานการรับสินค้าประจำวันที่'
-      f' {report_date.strftime("%d/%m/%Y")} <span'
-      f' class="report-date">(00.00 - 06.00 น.)</span></div><div'
-      f' class="report-grid">{cells}</div></div>',
-      unsafe_allow_html=True,
-  )
-
-  # ส่วนแสดงกราฟวงแหวน (Donut Charts) 3 ส่วนหลัก
-  c1, c2, c3 = st.columns(3)
-
-  with c1:
-    with st.container(border=True):
-      st.markdown(
-          '<div class="chart-title">ยอดงานประมาณการรับทั้งหมด</div>',
-          unsafe_allow_html=True,
-      )
-      fig1 = px.pie(
-          names=["ยอดงานประมาณการรับทั้งหมด", "ยอดงานรับกะดึก (ทั้งหมด)"],
-          values=[inv_all, night_received],
-          hole=0.6,
-          color_discrete_sequence=["#27845c", "#a4443d"],
-      )
-      fig1.update_layout(
-          margin=dict(t=10, b=10, l=10, r=10),
-          showlegend=True,
-          legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-      )
-      st.plotly_chart(fig1, use_container_width=True)
-
-  with c2:
-    with st.container(border=True):
-      st.markdown(
-          '<div class="chart-title">ยอดงาน Complete รับกะดึก (00.00-06.00)</div>',
-          unsafe_allow_html=True,
-      )
-      fig2 = px.pie(
-          names=["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"],
-          values=[work_night, work_morning, extra_work],
-          hole=0.6,
-          color_discrete_sequence=["#27845c", "#a4443d", "#82a957"],
-      )
-      fig2.update_layout(
-          margin=dict(t=10, b=10, l=10, r=10),
-          showlegend=True,
-          legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-      )
-      st.plotly_chart(fig2, use_container_width=True)
-
-  with c3:
-    with st.container(border=True):
-      st.markdown(
-          '<div class="chart-title">สรุปงานรับคงเหลือทั้งหมด (Pallets)</div>',
-          unsafe_allow_html=True,
-      )
-      fig3 = px.pie(
-          names=[
-              "กำลังลงสินค้า",
-              "รอลงสินค้า",
-              "Supplier กะดึก",
-              "Supplier กะเช้า",
-          ],
-          values=[
-              recv_start,
-              in_transit,
-              sup_night_missing,
-              sup_morning_missing,
-          ],
-          hole=0.6,
-          color_discrete_sequence=["#3b82f6", "#ef4444", "#10b981", "#8b5cf6"],
-      )
-      fig3.update_layout(
-          margin=dict(t=10, b=10, l=10, r=10),
-          showlegend=True,
-          legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-      )
-      st.plotly_chart(fig3, use_container_width=True)
-
-  # ส่วนกรอกข้อมูลเพื่อปรับแต่งค่าตัวเลข
-  st.markdown(
-      '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงานประจำวัน</div>',
-      unsafe_allow_html=True,
-  )
+if sheet_selection == "สถานการณ์การรับ (กะเช้า)":
   with st.container(border=True):
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-      inv_all = st.number_input(
-          "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
+    st.markdown(
+        '<div class="section-heading">📌 สถานการณ์การรับสินค้า</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<div class="section-caption">กะเช้า · ประจำวันที่'
+        f' {report_date.strftime("%d/%m/%Y")}</div>',
+        unsafe_allow_html=True,
+    )
+
+    inv_pallets = st.session_state.get("inv_pallets", 6126)
+    total_received = st.session_state.get("total_received", 5904)
+    complete_pallets = st.session_state.get("complete_pallets", 5722)
+    extra_work = st.session_state.get("extra_work", 138)
+    not_received_po = st.session_state.get("not_received_po", 73)
+    not_billed = st.session_state.get("not_billed", 250)
+    delayed_delivery = st.session_state.get("delayed_delivery", 0)
+
+    total_not_received = not_received_po + not_billed + delayed_delivery
+    percent_not_received = (
+        (total_not_received / total_received * 100) if total_received > 0 else 0
+    )
+
+    report_values = [
+        ("ประมาณการรับ(Inventory)", f"{inv_pallets:,}", False),
+        ("งานรับทั้งหมด(16.10 น.)", f"{total_received:,}", False),
+        ("งาน Complete(22.00 น.)", f"{complete_pallets:,}", False),
+        ("งานนอกรอบ Complete", f"{extra_work:,}", False),
+        ("งานไม่ได้รับ", f"{total_not_received:,}", True),
+        ("งานไม่ได้รับ (%)", f"{percent_not_received:.2f}%", True),
+        ("เลื่อนส่ง", f"{delayed_delivery:,}", False),
+        ("ส่งไม่ครบตาม PO", f"{not_received_po:,}", False),
+        ("ยังไม่ยื่นบิล", f"{not_billed:,}", False),
+        ("งานไม่ได้รับทั้งหมด", f"{total_not_received:,}", True),
+    ]
+
+    cells = "".join(
+        f'<div class="report-cell"><div class="report-label">{label}</div>'
+        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+        for label, value, alert in report_values
+    )
+    st.markdown(
+        f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
+        f' ประจำวันที่ {report_date.strftime("%d/%m/%Y")} <span'
+        f' class="report-date">(00.00–22.00 น.)</span></div><div'
+        f' class="report-grid">{cells}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    left_chart, right_chart = st.columns([1.15, 1])
+
+    receipt_items = [
+        ("งานรับทั้งหมด (16.10 น.)", total_received, "#27845c"),
+        ("งาน Complete (22.00 น.)", complete_pallets, "#82a957"),
+        ("งานนอกรอบ", extra_work, "#d4a745"),
+        ("งานไม่ได้รับ", total_not_received, "#c87568"),
+    ]
+    max_receipt = (
+        max((value for _, value, _ in receipt_items), default=1) or 1
+    )
+    vertical_bars = "".join(
+        f'<div class="vitem"><div class="vvalue">{value:,}</div>'
+        f'<div class="vbar"'
+        f' style="height:{max(2, value / max_receipt * 72):.1f}%;background:{color}"></div>'
+        f'<div class="vlabel">{label}</div></div>'
+        for label, value, color in receipt_items
+    )
+
+    reasons = [
+        ("งานไม่ได้รับทั้งหมด", total_not_received, "#c87568"),
+        ("ยังไม่ยื่นบิล", not_billed, "#27845c"),
+        ("ส่งไม่ครบตาม PO", not_received_po, "#82a957"),
+        ("เลื่อนส่ง", delayed_delivery, "#d4a745"),
+    ]
+    max_reason = max((value for _, value, _ in reasons), default=1) or 1
+    horizontal_bars = "".join(
+        f'<div class="hrow"><div class="hlabel">{label}</div><div'
+        f' class="htrack"><div class="hbar"'
+        f' style="width:{max(1.2, value / max_reason * 88):.1f}%;background:{color}"></div>'
+        f'<span class="hvalue"'
+        f' style="left:calc({max(1.2, value / max_reason * 88):.1f}% +'
+        f' 8px)">{value:,}</span></div></div>'
+        for label, value, color in reasons
+    )
+
+    with left_chart:
+      st.markdown(
+          f'<div class="chart-panel"><div class="chart-title">สรุปงานรับและงานค้าง</div>'
+          f'<div class="vchart">{vertical_bars}</div></div>',
+          unsafe_allow_html=True,
       )
-      night_received = st.number_input(
-          "ยอดงานรับกะดึก (ทั้งหมด)",
-          value=night_received,
-          step=1,
-          key="night_received",
+    with right_chart:
+      st.markdown(
+          f'<div class="chart-panel"><div class="chart-title">สาเหตุงานไม่ได้รับ</div>'
+          f'<div class="hchart">{horizontal_bars}</div></div>',
+          unsafe_allow_html=True,
       )
-      morning_received = st.number_input(
-          "ยอดงานรับกะเช้า (ทั้งหมด)",
-          value=morning_received,
-          step=1,
-          key="morning_received",
+
+    st.markdown(
+        '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงาน</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+      st.markdown(
+          '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
+          '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>',
+          unsafe_allow_html=True,
       )
-    with col_b:
-      complete_night = st.number_input(
-          "ยอดงาน Complete รับกะดึก",
-          value=complete_night,
-          step=1,
-          key="complete_night",
-      )
-      work_night = st.number_input(
-          "งาน Complete - กะดึก", value=work_night, step=1, key="work_night"
-      )
-      work_morning = st.number_input(
-          "งาน Complete - กะเช้า",
-          value=work_morning,
-          step=1,
-          key="work_morning",
-      )
-      extra_work = st.number_input(
-          "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work"
-      )
-    with col_c:
-      total_remaining = st.number_input(
-          "สรุปงานรับคงเหลือทั้งหมด",
-          value=total_remaining,
-          step=1,
-          key="total_remaining",
-      )
-      recv_start = st.number_input(
-          "กำลังลงสินค้า (Receiving Start)",
-          value=recv_start,
-          step=1,
-          key="recv_start",
-      )
-      in_transit = st.number_input(
-          "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit"
-      )
-      sup_night_missing = st.number_input(
-          "Supplier ยังไม่มาส่งกะดึก",
-          value=sup_night_missing,
-          step=1,
-          key="sup_night_missing",
-      )
-      sup_morning_missing = st.number_input(
-          "Supplier ยังไม่มาส่งกะเช้า",
-          value=sup_morning_missing,
-          step=1,
-          key="sup_morning_missing",
-      )
+
+      col1, col2, col3 = st.columns(3)
+      with col1:
+        inv_pallets = st.number_input(
+            "ประมาณการรับ (Inventory)", value=inv_pallets, step=1, key="inv_pallets"
+        )
+      with col2:
+        total_received = st.number_input(
+            "งานรับทั้งหมด (16.10 น.)",
+            value=total_received,
+            step=1,
+            key="total_received",
+        )
+      with col3:
+        complete_pallets = st.number_input(
+            "งาน Complete (22.00 น.)",
+            value=complete_pallets,
+            step=1,
+            key="complete_pallets",
+        )
+
+      col4, col5 = st.columns(2)
+      with col4:
+        extra_work = st.number_input(
+            "งานนอกรอบ Complete", value=extra_work, step=1, key="extra_work"
+        )
+      with col5:
+        delayed_delivery = st.number_input(
+            "เลื่อนส่ง (RP42)", value=delayed_delivery, step=1, key="delayed_delivery"
+        )
+
+      col6, col7 = st.columns(2)
+      with col6:
+        not_received_po = st.number_input(
+            "ส่งไม่ครบตาม PO", value=not_received_po, step=1, key="not_received_po"
+        )
+      with col7:
+        not_billed = st.number_input(
+            "ยังไม่ยื่นบิล", value=not_billed, step=1, key="not_billed"
+        )
 
 else:
   st.subheader("📋 ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม (Sheet 2)")
   st.info("ส่วนนี้จัดเตรียมไว้สำหรับบันทึกประวัติย้อนหลังและข้อมูลรายละเอียด")
 
   history_data = pd.DataFrame({
-      "วันที่": ["11/11/2026", "12/11/2026", "13/11/2026"],
-      "ประมาณการทั้งหมด": [6000, 6100, 6058],
-      "รับกะดึก": [4100, 4200, 4240],
-      "รับกะเช้า": [1900, 1900, 1818],
-      "งานคงเหลือ": [2500, 2450, 2425],
+      "วันที่": ["10/11/2026", "11/11/2026", "12/11/2026"],
+      "ประมาณการรับ": [6000, 6100, 6126],
+      "งานรับทั้งหมด": [5800, 5850, 5904],
+      "งาน Complete": [5600, 5680, 5722],
+      "งานไม่ได้รับ": [200, 170, 323],
   })
   st.dataframe(history_data, use_container_width=True)
 
   st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
   daily_note = st.text_area(
       "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
-      value="การรับสินค้ากะดึกดำเนินการเรียบร้อยตามแผนงาน",
+      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
   )
   if st.button("บันทึกข้อมูลหมายเหตุ"):
     st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
