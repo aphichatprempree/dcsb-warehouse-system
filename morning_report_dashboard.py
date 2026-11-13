@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 # ตั้งค่าหน้าเว็บแดชบอร์ด
@@ -71,6 +72,48 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
 .hero-title { color: white; font-size: 1.65rem; font-weight: 700; margin: 4px 0 2px; }
 .hero-subtitle { color: #e0eee5; font-size: .92rem; }
 
+/* Focus Cards สไตล์เน้นพิเศษขนาดใหญ่ */
+.focus-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+}
+.focus-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f6faf7 100%);
+    border: 2px solid #b8d4c2;
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: 0 8px 24px rgba(23, 75, 58, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+.focus-card.alert {
+    background: linear-gradient(135deg, #fffcfb 0%, #fef2f2 100%);
+    border-color: #fca5a5;
+}
+.focus-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #53685c;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.focus-card.alert .focus-label { color: #991b1b; }
+.focus-value {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--forest);
+    line-height: 1.2;
+    margin: 6px 0 2px;
+}
+.focus-card.alert .focus-value { color: #dc2626; }
+.focus-unit {
+    font-size: 0.88rem;
+    color: var(--muted);
+    font-weight: 500;
+}
+
 .report-wrap {
     background: white;
     border: 1px solid #c8d8cc;
@@ -119,11 +162,11 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     box-shadow: 0 4px 14px rgba(30, 67, 48, .04);
 }
 .chart-title { color: var(--forest); font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; text-align: center; }
-
 .summary-title { color: var(--forest); font-size: 1.2rem; font-weight: 700; margin: 22px 0 12px; }
 
 @media (max-width: 1200px) {
     .report-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .focus-grid { grid-template-columns: 1fr; }
 }
 
 .stButton > button {
@@ -134,10 +177,7 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     font-weight: 600;
     padding: .55rem 1rem;
 }
-.stButton > button:hover {
-    background: var(--forest);
-    color: white;
-}
+.stButton > button:hover { background: var(--forest); color: white; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -206,12 +246,12 @@ if uploaded_rp42:
     )
     st.sidebar.success(f"RP42 สำเร็จ ({len(df_rp42):,} แถว)")
   except Exception as e:
-    st.sidebar.error(f"RP42 Error: {e}")
+    st.sidebar.error(f"RP03 Error: {e}")
 
 st.sidebar.caption("DCSB Warehouse · Morning Report")
 
 if sheet_selection == "รายงานการรับสินค้า (กะเช้า)":
-  # ดึงค่าจาก Session State หรือค่าเริ่มต้นตามต้นฉบับ
+  # ดึงค่าจาก Session State หรือค่าเริ่มต้น
   inv_all = st.session_state.get("inv_all", 6058)
   night_received = st.session_state.get("night_received", 4240)
   morning_received = st.session_state.get("morning_received", 1818)
@@ -220,7 +260,6 @@ if sheet_selection == "รายงานการรับสินค้า (�
   work_morning = st.session_state.get("work_morning", 310)
   extra_work = st.session_state.get("extra_work", 658)
 
-  # คำนวณอัตโนมัติ
   pct_night_received = (
       (night_received / inv_all * 100) if inv_all > 0 else 0
   )
@@ -231,6 +270,25 @@ if sheet_selection == "รายงานการรับสินค้า (�
   sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
   pct_remaining = (
       (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
+  )
+
+  # --- ส่วนเน้นพิเศษ: แสดง 2 ตัวหลักคู่กันขนาดใหญ่พิเศษ ---
+  st.markdown(
+      f"""
+    <div class="focus-grid">
+        <div class="focus-card">
+            <div class="focus-label">📊 (%) สรุปงานค้างรับคงเหลือ</div>
+            <div class="focus-value">{pct_remaining:.2f}%</div>
+            <div class="focus-unit">จากยอดประมาณการรับทั้งหมด ({total_remaining:,} Pallets)[cite: 8]</div>
+        </div>
+        <div class="focus-card alert">
+            <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
+            <div class="focus-value">{sup_morning_missing:,} <span style="font-size: 1.5rem;">Pallets</span></div>
+            <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
+        </div>
+    </div>
+    """,
+      unsafe_allow_html=True,
   )
 
   # ตารางสรุป 13 คอลัมน์ ตามโครงสร้าง Excel ต้นฉบับ
@@ -263,7 +321,6 @@ if sheet_selection == "รายงานการรับสินค้า (�
       ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
   ]
 
-  # หมายเหตุ: ปรับให้แสดง 14 ช่องครบถ้วนตามแบบฟอร์ม
   cells = "".join(
       f'<div class="report-cell"><div class="report-label">{label}</div>'
       f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
@@ -280,8 +337,6 @@ if sheet_selection == "รายงานการรับสินค้า (�
 
   # ส่วนแสดงกราฟวงแหวน (Donut Charts) 3 ส่วนหลัก
   c1, c2, c3 = st.columns(3)
-
-  import plotly.express as px
 
   with c1:
     with st.container(border=True):
