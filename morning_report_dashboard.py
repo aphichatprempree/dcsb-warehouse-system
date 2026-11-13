@@ -161,7 +161,7 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     min-height: 400px;
     box-shadow: 0 4px 14px rgba(30, 67, 48, .04);
 }
-.chart-title { color: var(--forest); font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; text-align: center; }
+.chart-title { color: var(--forest); font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; text-align: center; }
 .summary-title { color: var(--forest); font-size: 1.2rem; font-weight: 700; margin: 22px 0 12px; }
 
 @media (max-width: 1200px) {
@@ -477,14 +477,14 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
       )
 
 # ==========================================
-# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) พร้อมฟอร์มแก้ไขข้อมูล
+# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) พร้อมดีไซน์กราฟแบบพรีเมียม
 # ==========================================
 else:
   st.subheader(
       f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {report_date.strftime('%d/%m/%Y')} (ย้อนหลัง)"
   )
   st.markdown(
-      "สามารถปรับแก้ตัวเลขด้านล่างนี้ได้ตามต้องการ ตารางและกราฟจะอัปเดตอัตโนมัติ"
+      "ปรับแต่งรูปแบบกราฟให้มีความเป็นทางการ คมชัด และอ่านง่ายสำหรับนำเสนอ"
   )
 
   # ดึงค่าผ่าน Session State สำหรับหน้าย้อนหลัง
@@ -503,7 +503,7 @@ else:
       (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
   )
 
-  # ตารางสรุป 12 ช่อง (ตามภาพต้นฉบับ)
+  # ตารางสรุป 10 ช่อง (ตามภาพต้นฉบับ)
   hist_report_values = [
       ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
       ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
@@ -531,13 +531,13 @@ else:
       unsafe_allow_html=True,
   )
 
-  # ส่วนแสดงกราฟเปรียบเทียบ 2 ฝั่ง
+  # ส่วนแสดงกราฟเปรียบเทียบ 2 ฝั่ง (ดีไซน์พรีเมียม ทางการ)
   col_chart1, col_chart2 = st.columns(2)
 
   with col_chart1:
     with st.container(border=True):
       st.markdown(
-          '<div class="chart-title">📊 สรุปงานรับและงานค้างส่ง</div>',
+          '<div class="chart-title">📊 สรุปภาพรวมงานรับและงานค้างส่ง</div>',
           unsafe_allow_html=True,
       )
       df_bar_v = pd.DataFrame({
@@ -561,25 +561,34 @@ else:
           text="จำนวน (Pallets)",
           color="ประเภทงาน",
           color_discrete_map={
-              "งานรับทั้งหมด (16.10 น.)": "#27845c",
+              "งานรับทั้งหมด (16.10 น.)": "#174b3a",
               "งาน Complete (22.00 น.)": "#eab308",
               "งานนอกรอบ": "#d97706",
               "งานไม่ได้รับ": "#dc2626",
           },
       )
-      fig_v.update_traces(textposition="outside")
+      fig_v.update_traces(
+          textposition="outside",
+          textfont_size=13,
+          textfont_weight="bold",
+          marker_line_width=1.5,
+          marker_line_color="white",
+      )
       fig_v.update_layout(
-          margin=dict(t=20, b=20, l=20, r=20),
+          margin=dict(t=30, b=20, l=20, r=20),
           showlegend=False,
           xaxis_title="",
-          yaxis_title="Pallets",
+          yaxis_title="จำนวน (Pallets)",
+          plot_bgcolor="rgba(0,0,0,0)",
+          paper_bgcolor="rgba(0,0,0,0)",
+          font=dict(family="IBM Plex Sans Thai", size=12),
       )
       st.plotly_chart(fig_v, use_container_width=True)
 
   with col_chart2:
     with st.container(border=True):
       st.markdown(
-          '<div class="chart-title">🚨 สาเหตุงานไม่ได้รับ</div>',
+          '<div class="chart-title">🚨 วิเคราะห์สาเหตุงานไม่ได้รับ</div>',
           unsafe_allow_html=True,
       )
       df_bar_h = pd.DataFrame({
@@ -596,6 +605,9 @@ else:
               hist_delayed,
           ],
       })
+      # เรียงลำดับจากมากไปน้อยให้อ่านง่าย
+      df_bar_h = df_bar_h.sort_values(by="จำนวน (Pallets)", ascending=True)
+
       fig_h = px.bar(
           df_bar_h,
           x="จำนวน (Pallets)",
@@ -610,12 +622,21 @@ else:
               "เลื่อนส่ง": "#94a3b8",
           },
       )
-      fig_h.update_traces(textposition="outside")
+      fig_h.update_traces(
+          textposition="outside",
+          textfont_size=13,
+          textfont_weight="bold",
+          marker_line_width=1.5,
+          marker_line_color="white",
+      )
       fig_h.update_layout(
-          margin=dict(t=20, b=20, l=20, r=20),
+          margin=dict(t=30, b=20, l=20, r=20),
           showlegend=False,
-          xaxis_title="Pallets",
+          xaxis_title="จำนวน (Pallets)",
           yaxis_title="",
+          plot_bgcolor="rgba(0,0,0,0)",
+          paper_bgcolor="rgba(0,0,0,0)",
+          font=dict(family="IBM Plex Sans Thai", size=12),
       )
       st.plotly_chart(fig_h, use_container_width=True)
 
