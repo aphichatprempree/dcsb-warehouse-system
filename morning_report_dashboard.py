@@ -75,6 +75,35 @@ st.markdown(
     .metric-value { color: var(--forest); font-size: 1.72rem; font-weight: 700; line-height: 1.35; margin-top: 6px; }
     .metric-unit { color: var(--muted); font-size: .78rem; margin-top: 1px; }
     .metric-card.emphasis { background: #eaf4ee; border-color: #cce2d3; border-top-color: #174b3a; }
+    .report-grid {
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 10px 0 22px;
+    }
+    .report-cell {
+        border: 1px solid #d7e2d9; border-radius: 10px; padding: 10px 8px 9px;
+        text-align: center; background: #fff; min-height: 72px; box-sizing: border-box;
+    }
+    .report-cell:nth-child(3n + 1) { background: #edf5ef; }
+    .report-cell:nth-child(3n + 2) { background: #f6f8e9; }
+    .report-cell:nth-child(3n) { background: #e8f3ee; }
+    .report-label { color: #53685c; font-size: .76rem; line-height: 1.3; min-height: 30px; }
+    .report-value { color: var(--forest); font-size: 1.35rem; font-weight: 700; line-height: 1.3; }
+    .report-value.alert { color: #a4443d; }
+    .chart-panel {
+        background: white; border: 1px solid var(--line); border-radius: 16px;
+        padding: 18px; min-height: 360px; box-shadow: 0 4px 14px rgba(30, 67, 48, .04);
+    }
+    .chart-title { color: var(--forest); font-size: 1.02rem; font-weight: 700; margin-bottom: 14px; }
+    .vchart { display: flex; align-items: stretch; justify-content: space-around; gap: 12px; height: 275px; padding: 10px 4px 0; border-bottom: 1px solid #dce5de; }
+    .vitem { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; }
+    .vvalue { font-size: .84rem; font-weight: 700; color: var(--ink); margin-bottom: 5px; }
+    .vbar { width: min(54px, 72%); min-height: 4px; border-radius: 8px 8px 2px 2px; box-shadow: inset 0 -12px 18px rgba(0,0,0,.06); }
+    .vlabel { min-height: 44px; padding-top: 8px; color: #52655a; font-size: .72rem; line-height: 1.25; }
+    .hchart { display: flex; flex-direction: column; gap: 19px; padding: 9px 0; }
+    .hrow { display: grid; grid-template-columns: minmax(90px, 36%) 1fr; gap: 9px; align-items: center; }
+    .hlabel { color: #52655a; font-size: .77rem; line-height: 1.25; text-align: right; }
+    .htrack { height: 29px; background: #f0f4f1; border-radius: 0 7px 7px 0; position: relative; }
+    .hbar { height: 100%; min-width: 2px; border-radius: 0 7px 7px 0; display: flex; align-items: center; justify-content: flex-end; }
+    .hvalue { position: absolute; top: 4px; color: #263b30; font-weight: 700; font-size: .85rem; white-space: nowrap; }
     .stButton > button {
         background: var(--green); color: white; border: 0; border-radius: 10px;
         font-weight: 600; padding: .55rem 1rem;
@@ -162,6 +191,25 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
         metric_card("งานไม่ได้รับรวม", f"{total_not_received:,}", emphasis=True)
     with m4:
         metric_card("คิดเป็นร้อยละ", f"{percent_not_received:.2f}", unit="% ของงานรับทั้งหมด", emphasis=True)
+    st.markdown('<div class="summary-title">📊 สรุปยอดรายงานประจำวัน</div>', unsafe_allow_html=True)
+    report_values = [
+        ("ประมาณการรับ", f"{inv_pallets:,}", False),
+        ("งานรับทั้งหมด", f"{total_received:,}", False),
+        ("งาน Complete", f"{complete_pallets:,}", False),
+        ("งานนอกรอบ", f"{extra_work:,}", False),
+        ("งานไม่ได้รับ", f"{total_not_received:,}", True),
+        ("งานไม่ได้รับ (%)", f"{percent_not_received:.2f}%", True),
+        ("เลื่อนส่ง", f"{delayed_delivery:,}", False),
+        ("ส่งไม่ครบ PO", f"{not_received_po:,}", False),
+        ("ยังไม่ยื่นบิล", f"{not_billed:,}", False),
+        ("ไม่ได้รับรวม", f"{total_not_received:,}", True),
+    ]
+    cells = "".join(
+        f'<div class="report-cell"><div class="report-label">{label}</div>'
+        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+        for label, value, alert in report_values
+    )
+    st.markdown(f'<div class="report-grid">{cells}</div>', unsafe_allow_html=True)
 
     chart_df = pd.DataFrame(
         {
@@ -172,11 +220,44 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
                 total_received, complete_pallets, extra_work, total_not_received, not_billed, not_received_po
             ],
         }
+    left_chart, right_chart = st.columns([1.15, 1])
+    receipt_items = [
+        ("งานรับทั้งหมด", total_received, "#27845c"),
+        ("งาน Complete", complete_pallets, "#82a957"),
+        ("งานนอกรอบ", extra_work, "#d4a745"),
+        ("งานไม่ได้รับ", total_not_received, "#c87568"),
+    ]
+    max_receipt = max((value for _, value, _ in receipt_items), default=1) or 1
+    vertical_bars = "".join(
+        f'<div class="vitem"><div class="vvalue">{value:,}</div>'
+        f'<div class="vbar" style="height:{max(2, value / max_receipt * 72):.1f}%;background:{color}"></div>'
+        f'<div class="vlabel">{label}</div></div>'
+        for label, value, color in receipt_items
     )
     with st.container(border=True):
         st.markdown('<div class="section-heading">องค์ประกอบของรายงาน</div>'
                     '<div class="section-caption">กราฟเดิมสำหรับรอปรับตามไฟล์ต้นฉบับ</div>', unsafe_allow_html=True)
         st.bar_chart(chart_df.set_index("ประเภทรายการ"))
+    reasons = [
+        ("งานไม่ได้รับรวม", total_not_received, "#c87568"),
+        ("ยังไม่ยื่นบิล", not_billed, "#27845c"),
+        ("ส่งไม่ครบตาม PO", not_received_po, "#82a957"),
+        ("เลื่อนส่ง", delayed_delivery, "#d4a745"),
+    ]
+    max_reason = max((value for _, value, _ in reasons), default=1) or 1
+    horizontal_bars = "".join(
+        f'<div class="hrow"><div class="hlabel">{label}</div><div class="htrack">'
+        f'<div class="hbar" style="width:{max(1.2, value / max_reason * 88):.1f}%;background:{color}"></div>'
+        f'<span class="hvalue" style="left:calc({max(1.2, value / max_reason * 88):.1f}% + 8px)">{value:,}</span>'
+        '</div></div>'
+        for label, value, color in reasons
+    )
+    with left_chart:
+        st.markdown(f'<div class="chart-panel"><div class="chart-title">สรุปงานรับและงานค้าง</div>'
+                    f'<div class="vchart">{vertical_bars}</div></div>', unsafe_allow_html=True)
+    with right_chart:
+        st.markdown(f'<div class="chart-panel"><div class="chart-title">สาเหตุงานไม่ได้รับ</div>'
+                    f'<div class="hchart">{horizontal_bars}</div></div>', unsafe_allow_html=True)
 else:
     st.markdown(
         '<div class="section-card"><div class="section-heading">📋 ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม</div>'
