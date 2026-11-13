@@ -45,7 +45,6 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.025em; }
 .hero-subtitle { color:#d8ece7;font-size:.92rem; }
 .hero-bar { height:3px;border-radius:3px;margin:14px auto 0;max-width:250px;background:linear-gradient(90deg,#e7b255,#f4d493,#73c8b2); }
 .page-sub { text-align:center;color:var(--muted);font-size:.78rem;letter-spacing:.12em;margin:6px 0 12px;text-transform:uppercase; }
-.section-title { display:flex;align-items:center;gap:11px;color:var(--ink);font-size:1.12rem;font-weight:700;margin:18px 0 5px; }
 .section-title { display:flex;align-items:center;gap:11px;color:var(--ink);font-size:1.12rem;font-weight:700;margin:12px 0 3px; }
 .section-title::before { content:"";width:4px;height:23px;border-radius:4px;background:linear-gradient(180deg,#11a092,#d8a13c);box-shadow:0 2px 8px rgba(8,126,120,.23); }
 .focus-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:8px 0 2px; }
@@ -67,12 +66,10 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.025em; }
 .report-label { color:var(--muted);font-size:.68rem;line-height:1.4;min-height:34px;font-weight:500; }
 .report-value { color:var(--ink);font-size:1.32rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums; }
 .report-value.alert { color:var(--rose); }
-[class*="st-key-card"] { background:linear-gradient(160deg,#fff 0%,#f9fbfa 100%);border:1px solid #e1eae8;border-radius:22px;box-shadow:0 12px 30px rgba(31,67,69,.08),inset 0 1px 0 #fff;padding:.95rem 1rem .65rem; }
 [class*="st-key-card"] { background:linear-gradient(160deg,#fff 0%,#f9fbfa 100%);border:1px solid #e1eae8;border-radius:22px;box-shadow:0 12px 30px rgba(31,67,69,.08),inset 0 1px 0 #fff;padding:.62rem .72rem .35rem; }
 .chart-title { color:var(--ink);font-size:1rem;font-weight:700;margin:0 0 4px;text-align:center; }
 .chart-sub { color:var(--muted);font-size:.76rem;text-align:center;margin-bottom:6px; }
 @media (max-width:1200px) { .report-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }.focus-grid { grid-template-columns:1fr; } }
-@media (max-width:700px) { .hero {padding:19px 16px;border-radius:18px}.hero-title{font-size:1.4rem}.report-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.focus-value{font-size:2.1rem} }
 @media (max-width:700px) { .hero {padding:16px 14px;border-radius:18px}.hero-title{font-size:1.4rem}.report-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.focus-value{font-size:2.1rem} }
 [data-testid="stNumberInput"] > label { font-size:.84rem;font-weight:600;color:#50636a; }
 [data-testid="stNumberInput"] input { border-radius:11px;border-color:#dce7e4;background:white; }
@@ -92,7 +89,6 @@ def _pct(value, base):
     return (value / base * 100) if base and base > 0 else 0.0
 
 
-def radial_chart(labels, values, base=None, height=440):
 def radial_chart(labels, values, base=None, height=340):
     """กราฟพัดครึ่งวงกลมสีรุ้ง (ตามตัวอย่างที่ 1) + ฟองเปอร์เซ็นต์ครึ่งซ้าย"""
     n = len(labels)
@@ -211,7 +207,6 @@ def radial_chart(labels, values, base=None, height=340):
     return fig
 
 
-def tube_chart(labels, values, base, height=520):
 def tube_chart(labels, values, base, height=390):
     """กราฟหลอดแท่งเงา + เส้นประเปอร์เซ็นต์ด้านบน (ตามตัวอย่างที่ 2)"""
     n = len(labels)
@@ -614,7 +609,6 @@ else:
                     ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับ"],
                     [hist_total_recv, hist_complete, hist_extra, hist_not_recv],
                     base=hist_total_recv,
-                    height=500,
                     height=390,
                 ),
                 use_container_width=True,
@@ -630,7 +624,6 @@ else:
                     ["ยังไม่ยื่นบิล", "ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
-                    height=500,
                     height=390,
                 ),
                 use_container_width=True,
@@ -667,3 +660,4 @@ else:
             hist_not_billed = st.number_input(
                 "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
             )
+
