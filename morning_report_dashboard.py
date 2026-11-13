@@ -620,19 +620,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                 use_container_width=True,
             )
 
-    st.markdown('<div class="section-title">เปรียบเทียบยอดงานรับ</div>', unsafe_allow_html=True)
-    with st.container(key="card_tube_1"):
-        chart_card_title("เปรียบเทียบยอดงานรับ (Pallets)", "เส้นประแสดง % เทียบยอดประมาณการรับทั้งหมด")
-        st.plotly_chart(
-            tube_chart(
-                ["ประมาณการรับ", "รับกะดึก", "รับกะเช้า", "Complete กะดึก", "คงเหลือทั้งหมด"],
-                [inv_all, night_received, morning_received, complete_night, total_remaining],
-                base=inv_all,
-                height=540,
-            ),
-            use_container_width=True,
-        )
-
     st.markdown(
         '<div class="section-title">✏️ ปรับปรุงข้อมูลรายงานประจำวัน</div>',
         unsafe_allow_html=True,
