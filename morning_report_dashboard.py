@@ -484,9 +484,7 @@ else:
   st.subheader(
       "📋 ชีต: สรุปงานรับและงานค้างส่ง (ย้อนหลัง / รายละเอียดเพิ่มเติม)"
   )
-  st.info(
-      "ส่วนนี้จัดเตรียมไว้สำหรับบันทึกประวัติย้อนหลังและข้อมูลรายละเอียดแยกต่างหาก"
-  )
+  st.info("ส่วนนี้แสดงตารางข้อมูลย้อนหลังและกราฟแนวโน้มการรับสินค้าประจำวัน")
 
   history_data = pd.DataFrame({
       "วันที่": ["11/11/2026", "12/11/2026", "13/11/2026"],
@@ -495,7 +493,30 @@ else:
       "รับกะเช้า": [1900, 1900, 1818],
       "งานคงเหลือ": [2500, 2450, 2425],
   })
+
   st.dataframe(history_data, use_container_width=True)
+
+  # เพิ่มกราฟแสดงแนวโน้มย้อนหลัง
+  st.markdown("---")
+  st.markdown(
+      '<div class="chart-title">📈 กราฟแสดงแนวโน้มงานรับและงานคงเหลือย้อนหลัง</div>',
+      unsafe_allow_html=True,
+  )
+
+  fig_history = px.bar(
+      history_data,
+      x="วันที่",
+      y=["ประมาณการทั้งหมด", "รับกะดึก", "รับกะเช้า", "งานคงเหลือ"],
+      barmode="group",
+      color_discrete_sequence=["#174b3a", "#27845c", "#82a957", "#c87568"],
+  )
+  fig_history.update_layout(
+      margin=dict(t=20, b=20, l=20, r=20),
+      legend_title_text="ประเภทรายการ",
+      xaxis_title="วันที่",
+      yaxis_title="จำนวน Pallets",
+  )
+  st.plotly_chart(fig_history, use_container_width=True)
 
   st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
   daily_note = st.text_area(
