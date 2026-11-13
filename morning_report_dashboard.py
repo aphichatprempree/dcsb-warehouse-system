@@ -299,4 +299,165 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
     st.markdown(
         f'<div class="section-caption">กะเช้า · ประจำวันที่'
         f' {report_date.strftime("%d/%m/%Y")}</div>',
-        unsafe_allow_
+        unsafe_allow_html=True,
+    )
+
+    inv_pallets = st.session_state.get("inv_pallets", 6126)
+    total_received = st.session_state.get("total_received", 5904)
+    complete_pallets = st.session_state.get("complete_pallets", 5722)
+    extra_work = st.session_state.get("extra_work", 138)
+    not_received_po = st.session_state.get("not_received_po", 73)
+    not_billed = st.session_state.get("not_billed", 250)
+    delayed_delivery = st.session_state.get("delayed_delivery", 0)
+
+    total_not_received = not_received_po + not_billed + delayed_delivery
+    percent_not_received = (
+        (total_not_received / total_received * 100) if total_received > 0 else 0
+    )
+
+    report_values = [
+        ("ประมาณการรับ(Inventory)", f"{inv_pallets:,}", False),
+        ("งานรับทั้งหมด(16.10 น.)", f"{total_received:,}", False),
+        ("งาน Complete(22.00 น.)", f"{complete_pallets:,}", False),
+        ("งานนอกรอบ Complete", f"{extra_work:,}", False),
+        ("งานไม่ได้รับ", f"{total_not_received:,}", True),
+        ("งานไม่ได้รับ (%)", f"{percent_not_received:.2f}%", True),
+        ("เลื่อนส่ง", f"{delayed_delivery:,}", False),
+        ("ส่งไม่ครบตาม PO", f"{not_received_po:,}", False),
+        ("ยังไม่ยื่นบิล", f"{not_billed:,}", False),
+        ("งานไม่ได้รับทั้งหมด", f"{total_not_received:,}", True),
+    ]
+
+    cells = "".join(
+        f'<div class="report-cell"><div class="report-label">{label}</div>'
+        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+        for label, value, alert in report_values
+    )
+    st.markdown(
+        f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
+        f' ประจำวันที่ {report_date.strftime("%d/%m/%Y")} <span'
+        f' class="report-date">(00.00–22.00 น.)</span></div><div'
+        f' class="report-grid">{cells}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    left_chart, right_chart = st.columns([1.15, 1])
+
+    receipt_items = [
+        ("งานรับทั้งหมด (16.10 น.)", total_received, "#27845c"),
+        ("งาน Complete (22.00 น.)", complete_pallets, "#82a957"),
+        ("งานนอกรอบ", extra_work, "#d4a745"),
+        ("งานไม่ได้รับ", total_not_received, "#c87568"),
+    ]
+    max_receipt = (
+        max((value for _, value, _ in receipt_items), default=1) or 1
+    )
+    vertical_bars = "".join(
+        f'<div class="vitem"><div class="vvalue">{value:,}</div>'
+        f'<div class="vbar"'
+        f' style="height:{max(2, value / max_receipt * 72):.1f}%;background:{color}"></div>'
+        f'<div class="vlabel">{label}</div></div>'
+        for label, value, color in receipt_items
+    )
+
+    reasons = [
+        ("งานไม่ได้รับทั้งหมด", total_not_received, "#c87568"),
+        ("ยังไม่ยื่นบิล", not_billed, "#27845c"),
+        ("ส่งไม่ครบตาม PO", not_received_po, "#82a957"),
+        ("เลื่อนส่ง", delayed_delivery, "#d4a745"),
+    ]
+    max_reason = max((value for _, value, _ in reasons), default=1) or 1
+    horizontal_bars = "".join(
+        f'<div class="hrow"><div class="hlabel">{label}</div><div'
+        f' class="htrack"><div class="hbar"'
+        f' style="width:{max(1.2, value / max_reason * 88):.1f}%;background:{color}"></div>'
+        f'<span class="hvalue"'
+        f' style="left:calc({max(1.2, value / max_reason * 88):.1f}% +'
+        f' 8px)">{value:,}</span></div></div>'
+        for label, value, color in reasons
+    )
+
+    with left_chart:
+      st.markdown(
+          f'<div class="chart-panel"><div class="chart-title">สรุปงานรับและงานค้าง</div>'
+          f'<div class="vchart">{vertical_bars}</div></div>',
+          unsafe_allow_html=True,
+      )
+    with right_chart:
+      st.markdown(
+          f'<div class="chart-panel"><div class="chart-title">สาเหตุงานไม่ได้รับ</div>'
+          f'<div class="hchart">{horizontal_bars}</div></div>',
+          unsafe_allow_html=True,
+      )
+
+    st.markdown(
+        '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงาน</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+      st.markdown(
+          '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
+          '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>',
+          unsafe_allow_html=True,
+      )
+
+      col1, col2, col3 = st.columns(3)
+      with col1:
+        inv_pallets = st.number_input(
+            "ประมาณการรับ (Inventory)", value=inv_pallets, step=1, key="inv_pallets"
+        )
+      with col2:
+        total_received = st.number_input(
+            "งานรับทั้งหมด (16.10 น.)",
+            value=total_received,
+            step=1,
+            key="total_received",
+        )
+      with col3:
+        complete_pallets = st.number_input(
+            "งาน Complete (22.00 น.)",
+            value=complete_pallets,
+            step=1,
+            key="complete_pallets",
+        )
+
+      col4, col5 = st.columns(2)
+      with col4:
+        extra_work = st.number_input(
+            "งานนอกรอบ Complete", value=extra_work, step=1, key="extra_work"
+        )
+      with col5:
+        delayed_delivery = st.number_input(
+            "เลื่อนส่ง (RP42)", value=delayed_delivery, step=1, key="delayed_delivery"
+        )
+
+      col6, col7 = st.columns(2)
+      with col6:
+        not_received_po = st.number_input(
+            "ส่งไม่ครบตาม PO", value=not_received_po, step=1, key="not_received_po"
+        )
+      with col7:
+        not_billed = st.number_input(
+            "ยังไม่ยื่นบิล", value=not_billed, step=1, key="not_billed"
+        )
+
+else:
+  st.subheader("📋 ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม (Sheet 2)")
+  st.info("ส่วนนี้จัดเตรียมไว้สำหรับบันทึกประวัติย้อนหลังและข้อมูลรายละเอียด")
+
+  history_data = pd.DataFrame({
+      "วันที่": ["10/11/2026", "11/11/2026", "12/11/2026"],
+      "ประมาณการรับ": [6000, 6100, 6126],
+      "งานรับทั้งหมด": [5800, 5850, 5904],
+      "งาน Complete": [5600, 5680, 5722],
+      "งานไม่ได้รับ": [200, 170, 323],
+  })
+  st.dataframe(history_data, use_container_width=True)
+
+  st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
+  daily_note = st.text_area(
+      "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
+      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
+  )
+  if st.button("บันทึกข้อมูลหมายเหตุ"):
+    st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
