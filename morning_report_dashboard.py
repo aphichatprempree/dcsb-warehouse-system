@@ -30,34 +30,23 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
 [data-testid="stAppViewContainer"] {
     background: linear-gradient(180deg, #f2f7f3 0%, #f8faf8 260px, #f8faf8 100%);
 }
-[data-testid="stHeader"] {
-    background: transparent;
-}
+[data-testid="stHeader"] { background: transparent; }
 [data-testid="stSidebar"] {
     background: #edf4ef;
     border-right: 1px solid var(--line);
-}
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-    color: var(--forest);
 }
 .block-container {
     padding-top: 2rem;
     padding-bottom: 3rem;
     max-width: 1500px;
 }
-h1, h2, h3 {
-    color: var(--forest);
-    letter-spacing: -0.02em;
-}
+h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
 h1 { font-size: 2rem !important; font-weight: 700 !important; }
 h2 { font-size: 1.35rem !important; font-weight: 700 !important; }
 h3 { font-size: 1.05rem !important; font-weight: 600 !important; }
 
-[data-testid="stRadio"] label, [data-testid="stDateInput"] label {
-    color: var(--ink);
-}
 [data-testid="stNumberInput"] > label {
-    font-size: .9rem;
+    font-size: .88rem;
     font-weight: 500;
     color: #40564a;
 }
@@ -82,13 +71,6 @@ h3 { font-size: 1.05rem !important; font-weight: 600 !important; }
 .hero-title { color: white; font-size: 1.75rem; font-weight: 700; margin: 4px 0 2px; }
 .hero-subtitle { color: #e0eee5; font-size: .95rem; }
 
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: white;
-    border-color: var(--line) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 14px rgba(30, 67, 48, .035);
-    margin: 14px 0;
-}
 .section-heading { color: var(--forest); font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
 .section-caption { color: var(--muted); font-size: .84rem; margin-bottom: 12px; }
 .summary-title { color: var(--forest); font-size: 1.24rem; font-weight: 700; margin: 22px 0 12px; }
@@ -141,15 +123,7 @@ h3 { font-size: 1.05rem !important; font-weight: 600 !important; }
     font-weight: 600;
     padding: .55rem 1rem;
 }
-.stButton > button:hover {
-    background: var(--forest);
-    color: white;
-}
-[data-testid="stDataFrame"] {
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    overflow: hidden;
-}
+.stButton > button:hover { background: var(--forest); color: white; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -190,69 +164,73 @@ st.sidebar.caption("DCSB Warehouse · Morning Report")
 if sheet_selection == "สถานการณ์การรับ (กะเช้า)":
   with st.container(border=True):
     st.markdown(
-        '<div class="section-heading">📌 สถานการณ์การรับสินค้า</div>',
+        '<div class="section-heading">📌 สถานการณ์การรับสินค้าประจำวัน</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
         f'<div class="section-caption">กะเช้า · ประจำวันที่'
-        f' {report_date.strftime("%d/%m/%Y")}</div>',
+        f' {report_date.strftime("%d/%m/%Y")} (00.00-22.00 น.)</div>',
         unsafe_allow_html=True,
     )
 
+    # จัดเรียงฟิลด์กรอกข้อมูลตามลำดับต้นฉบับ Excel
     with st.container(border=True):
       st.markdown(
-          '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
-          '<div class="section-caption">เปรียบเทียบประมาณการกับยอดรับทั้งหมดของวัน</div>',
+          '<div class="section-heading">📦 สรุปงานรับและงานค้างส่ง</div>'
+          '<div class="section-caption">เรียงตามลำดับคอลัมน์ต้นฉบับ Excel</div>',
           unsafe_allow_html=True,
       )
-      col1, col2 = st.columns(2)
-      with col1:
+
+      c1, c2, c3 = st.columns(3)
+      with c1:
         inv_pallets = st.number_input(
-            "ประมาณการรับ (Inventory Pallets)", value=6126, step=1
+            "1. ประมาณการรับ (Inventory) (Pallets)", value=6126, step=1
         )
-      with col2:
+      with c2:
         total_received = st.number_input(
-            "งานรับทั้งหมด (16.10 น.) (Pallets)", value=5904, step=1
+            "2. งานรับทั้งหมด (16.10 น.) (Pallets)", value=5904, step=1
         )
-
-    with st.container(border=True):
-      st.markdown(
-          '<div class="section-heading">02 · สถานะงานรับสินค้า</div><div'
-          ' class="section-caption">ติดตามงานที่เสร็จสมบูรณ์และงานรับนอกรอบ</div>',
-          unsafe_allow_html=True,
-      )
-      col3, col4 = st.columns(2)
-      with col3:
+      with c3:
         complete_pallets = st.number_input(
-            "งาน Complete (22.00 น.) (Pallets)", value=5722, step=1
-        )
-      with col4:
-        extra_work = st.number_input(
-            "งานนอกรอบ (Complete Pallets)", value=138, step=1
+            "3. งาน Complete (22.00 น.) (Pallets)", value=5722, step=1
         )
 
-    with st.container(border=True):
-      st.markdown(
-          '<div class="section-heading">03 · รายละเอียดสาเหตุงานไม่ได้รับ</div>'
-          '<div class="section-caption">แยกสาเหตุเพื่อให้เห็นรายการที่ต้องติดตาม</div>',
-          unsafe_allow_html=True,
-      )
-      col5, col6, col7 = st.columns(3)
-      with col5:
+      c4, c5 = st.columns(2)
+      with c4:
+        extra_work = st.number_input(
+            "4. งานนอกรอบ Complete (Pallets)", value=138, step=1
+        )
+      with c5:
+        # คำนวณยอดงานไม่ได้รับอัตโนมัติจากผลรวมสาเหตุ หรือเปิดให้กรอกทับได้
         not_received_po = st.number_input(
             "ส่งไม่ครบตาม PO (Pallets)", value=73, step=1
         )
-      with col6:
         not_billed = st.number_input("ยังไม่ยื่นบิล (Pallets)", value=250, step=1)
-      with col7:
         delayed_delivery = st.number_input(
             "เลื่อนส่ง (Pallets)", value=0, step=1
         )
 
-    total_not_received = not_received_po + not_billed
+    # คำนวณค่าอัตโนมัติ
+    total_not_received = not_received_po + not_billed + delayed_delivery
     percent_not_received = (
         (total_not_received / total_received * 100) if total_received > 0 else 0
     )
+
+    with st.container(border=True):
+      st.markdown(
+          '<div class="section-heading">⚠️ สาเหตุงานไม่ได้รับ</div>'
+          '<div class="section-caption">รายละเอียดแยกตามประเภทสาเหตุค้างส่ง</div>',
+          unsafe_allow_html=True,
+      )
+      sc1, sc2, sc3, sc4 = st.columns(4)
+      with sc1:
+        st.metric("เลื่อนส่ง (Pallets)", f"{delayed_delivery:,}")
+      with sc2:
+        st.metric("ส่งไม่ครบตาม PO (Pallets)", f"{not_received_po:,}")
+      with sc3:
+        st.metric("ยังไม่ยื่นบิล (Pallets)", f"{not_billed:,}")
+      with sc4:
+        st.metric("งานไม่ได้รับทั้งหมด", f"{total_not_received:,} Pallets")
 
     st.markdown(
         '<div class="summary-title">📈 สรุปผลการปฏิบัติงานภาพรวม</div>',
@@ -274,7 +252,7 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
       )
 
     st.markdown(
-        '<div class="summary-title">📊 สรุปยอดรายงานประจำวัน</div>',
+        '<div class="summary-title">📊 ตารางสรุปยอดรายงานประจำวัน</div>',
         unsafe_allow_html=True,
     )
     report_values = [
@@ -287,7 +265,7 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
         ("เลื่อนส่ง", f"{delayed_delivery:,}", False),
         ("ส่งไม่ครบ PO", f"{not_received_po:,}", False),
         ("ยังไม่ยื่นบิล", f"{not_billed:,}", False),
-        ("ไม่ได้รับรวม", f"{total_not_received:,}", True),
+        ("งานไม่ได้รับทั้งหมด", f"{total_not_received:,}", True),
     ]
     cells = "".join(
         f'<div class="report-cell"><div class="report-label">{label}</div>'
