@@ -435,3 +435,88 @@ else:
   )
   if st.button("บันทึกข้อมูลหมายเหตุ"):
     st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
+
+import pandas as pd
+import streamlit as st
+
+# ตั้งค่าหน้าเว็บแดชบอร์ด
+st.set_page_config(
+    page_title="Import รายงาน RP01, RP03, RP42 | DCSB Warehouse",
+    page_icon="📥",
+    layout="wide",
+)
+
+st.title("📥 ระบบนำเข้าข้อมูลรายงาน (RP01, RP03, RP42)")
+st.markdown("อัปโหลดไฟล์รายงานเพื่อเตรียมประมวลผลเข้าสู่แดชบอร์ดอัตโนมัติ")
+
+st.markdown("---")
+
+# สร้าง 3 คอลัมน์สำหรับอัปโหลดรายงานทั้ง 3 ตัว
+col_rp1, col_rp3, col_rp42 = st.columns(3)
+
+with col_rp1:
+  st.subheader("📄 รายงาน RP01")
+  st.caption("ใช้สำหรับตัดงานโอนออก / ยอด Reject / ยอดคงเหลือ 22.00 น.")
+  uploaded_rp01 = st.file_uploader(
+      "เลือกไฟล์ RP01 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp01"
+  )
+  df_rp01 = None
+  if uploaded_rp01 is not None:
+    try:
+      if uploaded_rp01.name.endswith(".csv"):
+        df_rp01 = pd.read_csv(uploaded_rp01)
+      else:
+        df_rp01 = pd.read_excel(uploaded_rp01)
+      st.success(f"โหลด RP01 สำเร็จ ({len(df_rp01):,} แถว)")
+      with st.expander("ดูตัวอย่างข้อมูล RP01"):
+        st.dataframe(df_rp01.head(5), use_container_width=True)
+    except Exception as e:
+      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+
+with col_rp3:
+  st.subheader("📄 รายงาน RP03")
+  st.caption("ใช้สำหรับ VLOOKUP ตรวจสอบงานนอกรอบ (Complete Pallets)")
+  uploaded_rp03 = st.file_uploader(
+      "เลือกไฟล์ RP03 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp03"
+  )
+  df_rp03 = None
+  if uploaded_rp03 is not None:
+    try:
+      if uploaded_rp03.name.endswith(".csv"):
+        df_rp03 = pd.read_csv(uploaded_rp03)
+      else:
+        df_rp03 = pd.read_excel(uploaded_rp03)
+      st.success(f"โหลด RP03 สำเร็จ ({len(df_rp03):,} แถว)")
+      with st.expander("ดูตัวอย่างข้อมูล RP03"):
+        st.dataframe(df_rp03.head(5), use_container_width=True)
+    except Exception as e:
+      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+
+with col_rp42:
+  st.subheader("📄 รายงาน RP42")
+  st.caption("ใช้สำหรับดึงข้อมูลและตรวจสอบรายการเลื่อนส่ง")
+  uploaded_rp42 = st.file_uploader(
+      "เลือกไฟล์ RP42 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp42"
+  )
+  df_rp42 = None
+  if uploaded_rp42 is not None:
+    try:
+      if uploaded_rp42.name.endswith(".csv"):
+        df_rp42 = pd.read_csv(uploaded_rp42)
+      else:
+        df_rp42 = pd.read_excel(uploaded_rp42)
+      st.success(f"โหลด RP42 สำเร็จ ({len(df_rp42):,} แถว)")
+      with st.expander("ดูตัวอย่างข้อมูล RP42"):
+        st.dataframe(df_rp42.head(5), use_container_width=True)
+    except Exception as e:
+      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+
+st.markdown("---")
+if st.button("🔄 ยืนยันการประมวลผลข้อมูลทั้ง 3 ไฟล์"):
+  if uploaded_rp01 and uploaded_rp03 and uploaded_rp42:
+    st.success(
+        "ระบบบันทึกและเตรียมพร้อมไฟล์รายงานทั้ง 3 ชุดเรียบร้อยแล้ว!"
+        " แจ้งเงื่อนไขการดึงข้อมูลต่อได้เลยครับ"
+    )
+  else:
+    st.warning("กรุณาอัปโหลดไฟล์ให้ครบทั้ง 3 รายงานก่อนกดประมวลผลครับ")
