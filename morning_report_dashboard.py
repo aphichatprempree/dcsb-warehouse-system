@@ -234,7 +234,7 @@ st.markdown(
 st.sidebar.header("📁 เลือกมุมมองข้อมูล")
 sheet_selection = st.sidebar.radio(
     "เลือกชีต:",
-    ["สถานการณ์การรับ (กะเช้า)", "ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม"],
+    ["สรุปงานรับและงานค้างส่ง(ย้อนหลัง)", "สถานการณ์การรับ(กะเช้าปัจจุบัน)"],
 )
 st.sidebar.markdown("---")
 report_date = st.sidebar.date_input(
