@@ -5,7 +5,7 @@ import streamlit as st
 
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
 st.set_page_config(
-    page_title="DCSB Warehouse Central System",
+    page_title="DCSB Warehouse Morning Report",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -171,514 +171,465 @@ h1, h2, h3 { color: var(--forest); letter-spacing: -0.02em; }
     unsafe_allow_html=True,
 )
 
-# --- 📁 เมนูหลักสำหรับเลือกโปรแกรม (Central Hub) ---
-st.sidebar.header("🗂️ เมนูระบบหลัก (Central Hub)")
-main_app_selection = st.sidebar.radio(
-    "เลือกโปรแกรม:",
+# --- Sidebar เมนูเลือกชีตรายงาน ---
+st.sidebar.header("📁 เลือกมุมมองรายงาน")
+sheet_selection = st.sidebar.radio(
+    "เลือกชีต:",
     [
-        "📊 รายงานการรับสินค้า (Morning Report)",
-        "🔄 โปรแกรมประมวลผล / Real-time Utility",
+        "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
+        "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
     ],
 )
 st.sidebar.markdown("---")
 
-# =========================================================================
-# 📊 โปรแกรมที่ 1: รายงานการรับสินค้า (Morning Report)
-# =========================================================================
-if main_app_selection == "📊 รายงานการรับสินค้า (Morning Report)":
-  st.sidebar.header("📁 เลือกมุมมองรายงาน")
-  sheet_selection = st.sidebar.radio(
-      "เลือกชีต:",
-      [
-          "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
-          "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
-      ],
+# แยกตัวเลือกวันที่ของแต่ละชีตให้อิสระจากกันอย่างชัดเจน
+if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
+  morning_date = st.sidebar.date_input(
+      "ประจำวันที่ (กะเช้าปัจจุบัน)",
+      value=pd.to_datetime("2026-11-13"),
+      key="m_date_input",
   )
-  st.sidebar.markdown("---")
+else:
+  hist_date = st.sidebar.date_input(
+      "ประจำวันที่ (ย้อนหลัง)",
+      value=pd.to_datetime("2026-11-12"),
+      key="h_date_input",
+  )
 
-  # แยกตัวเลือกวันที่ตามชีตที่กำลังเลือกใช้งานอยู่บน Sidebar อย่างอิสระ
-  if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
-    morning_date = st.sidebar.date_input(
-        "ประจำวันที่ (กะเช้าปัจจุบัน)",
-        value=pd.to_datetime("2026-11-13"),
-        key="m_date_input",
-    )
-  else:
-    hist_date = st.sidebar.date_input(
-        "ประจำวันที่ (ย้อนหลัง)",
-        value=pd.to_datetime("2026-11-12"),
-        key="h_date_input",
-    )
+st.sidebar.markdown("---")
+st.sidebar.header("📥 Import ไฟล์รายงานระบบ")
+uploaded_rp01 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
+)
+uploaded_rp03 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
+)
+uploaded_rp42 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
+)
 
-  st.sidebar.markdown("---")
-  st.sidebar.header("📥 Import ไฟล์รายงานระบบ")
-  uploaded_rp01 = st.sidebar.file_uploader(
-      "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
+st.markdown(
+    '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT'
+    ' SYSTEM</div><div class="hero-title">📊'
+    " รายงานการรับสินค้าประจำวัน</div><div"
+    ' class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div></div>',
+    unsafe_allow_html=True,
+)
+
+# =========================================================================
+# ชีตที่ 1: สถานการณ์การรับ (กะเช้าปัจจุบัน)
+# =========================================================================
+if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
+  inv_all = st.session_state.get("inv_all", 6058)
+  night_received = st.session_state.get("night_received", 4240)
+  morning_received = st.session_state.get("morning_received", 1818)
+  complete_night = st.session_state.get("complete_night", 4475)
+  work_night = st.session_state.get("work_night", 3507)
+  work_morning = st.session_state.get("work_morning", 310)
+  extra_work = st.session_state.get("extra_work", 658)
+
+  pct_night_received = (
+      (night_received / inv_all * 100) if inv_all > 0 else 0
   )
-  uploaded_rp03 = st.sidebar.file_uploader(
-      "อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
-  )
-  uploaded_rp42 = st.sidebar.file_uploader(
-      "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
+  total_remaining = st.session_state.get("total_remaining", 2425)
+  recv_start = st.session_state.get("recv_start", 473)
+  in_transit = st.session_state.get("in_transit", 268)
+  sup_night_missing = st.session_state.get("sup_night_missing", 239)
+  sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
+  pct_remaining = (
+      (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
   )
 
   st.markdown(
-      '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT'
-      ' SYSTEM</div><div class="hero-title">📊'
-      " รายงานการรับสินค้าประจำวัน</div><div"
-      ' class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div></div>',
+      f"""
+    <div class="focus-grid">
+        <div class="focus-card">
+            <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
+            <div class="focus-value">{complete_night:,} <span style="font-size: 1.5rem;">Pallets</span></div>
+            <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
+        </div>
+        <div class="focus-card alert">
+            <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
+            <div class="focus-value">{sup_morning_missing:,} <span style="font-size: 1.5rem;">Pallets</span></div>
+            <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
+        </div>
+    </div>
+    """,
       unsafe_allow_html=True,
   )
 
-  # --- ชีต: สถานการณ์การรับ (กะเช้าปัจจุบัน) ---
-  if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
-    inv_all = st.session_state.get("inv_all", 6058)
-    night_received = st.session_state.get("night_received", 4240)
-    morning_received = st.session_state.get("morning_received", 1818)
-    complete_night = st.session_state.get("complete_night", 4475)
-    work_night = st.session_state.get("work_night", 3507)
-    work_morning = st.session_state.get("work_morning", 310)
-    extra_work = st.session_state.get("extra_work", 658)
+  report_values = [
+      ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
+      ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
+      ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
+      ("ยอดงาน Complete รับกะดึก (00.00-06.00)", f"{complete_night:,}", False),
+      ("งาน Complete (00.00-06.00)\nงานกะดึก", f"{work_night:,}", False),
+      ("งาน Complete (00.00-06.00)\nงานกะเช้า", f"{work_morning:,}", False),
+      ("งาน Complete (00.00-06.00)\nงานนอกรอบ", f"{extra_work:,}", False),
+      ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
+      ("สรุปงานรับคงเหลือทั้งหมด (Pallets)", f"{total_remaining:,}", True),
+      (
+          "งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)",
+          f"{recv_start:,}",
+          False,
+      ),
+      ("งานรับคงเหลือทั้งหมด\nรอลงสินค้า (InTransit)", f"{in_transit:,}", False),
+      (
+          "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก",
+          f"{sup_night_missing:,}",
+          False,
+      ),
+      (
+          "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า",
+          f"{sup_morning_missing:,}",
+          False,
+      ),
+      ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
+  ]
 
-    pct_night_received = (
-        (night_received / inv_all * 100) if inv_all > 0 else 0
-    )
-    total_remaining = st.session_state.get("total_remaining", 2425)
-    recv_start = st.session_state.get("recv_start", 473)
-    in_transit = st.session_state.get("in_transit", 268)
-    sup_night_missing = st.session_state.get("sup_night_missing", 239)
-    sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
-    pct_remaining = (
-        (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
-    )
+  cells = "".join(
+      f'<div class="report-cell"><div class="report-label">{label}</div>'
+      f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+      for label, value, alert in report_values
+  )
+  st.markdown(
+      f'<div class="report-wrap"><div class="report-head">รายงานการรับสินค้าประจำวันที่'
+      f' {morning_date.strftime("%d/%m/%Y")} <span'
+      f' class="report-date">(00.00 - 06.00 น.)</span></div><div'
+      f' class="report-grid">{cells}</div></div>',
+      unsafe_allow_html=True,
+  )
 
-    st.markdown(
-        f"""
-        <div class="focus-grid">
-            <div class="focus-card">
-                <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
-                <div class="focus-value">{complete_night:,} <span style="font-size: 1.5rem;">Pallets</span></div>
-                <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
-            </div>
-            <div class="focus-card alert">
-                <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
-                <div class="focus-value">{sup_morning_missing:,} <span style="font-size: 1.5rem;">Pallets</span></div>
-                <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    report_values = [
-        ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
-        ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
-        ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
-        ("ยอดงาน Complete รับกะดึก (00.00-06.00)", f"{complete_night:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานกะดึก", f"{work_night:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานกะเช้า", f"{work_morning:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานนอกรอบ", f"{extra_work:,}", False),
-        ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
-        ("สรุปงานรับคงเหลือทั้งหมด (Pallets)", f"{total_remaining:,}", True),
-        (
-            "งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)",
-            f"{recv_start:,}",
-            False,
-        ),
-        ("งานรับคงเหลือทั้งหมด\nรอลงสินค้า (InTransit)", f"{in_transit:,}", False),
-        (
-            "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก",
-            f"{sup_night_missing:,}",
-            False,
-        ),
-        (
-            "งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า",
-            f"{sup_morning_missing:,}",
-            False,
-        ),
-        ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
-    ]
-
-    cells = "".join(
-        f'<div class="report-cell"><div class="report-label">{label}</div>'
-        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-        for label, value, alert in report_values
-    )
-    st.markdown(
-        f'<div class="report-wrap"><div class="report-head">รายงานการรับสินค้าประจำวันที่'
-        f' {morning_date.strftime("%d/%m/%Y")} <span'
-        f' class="report-date">(00.00 - 06.00 น.)</span></div><div'
-        f' class="report-grid">{cells}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-      with st.container(border=True):
-        st.markdown(
-            '<div class="chart-title">ยอดงานประมาณการรับทั้งหมด</div>',
-            unsafe_allow_html=True,
-        )
-        fig1 = px.pie(
-            names=["ยอดงานประมาณการรับทั้งหมด", "ยอดงานรับกะดึก (ทั้งหมด)"],
-            values=[inv_all, night_received],
-            hole=0.6,
-            color_discrete_sequence=["#27845c", "#a4443d"],
-        )
-        fig1.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=True,
-            legend=dict(
-                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
-            ),
-        )
-        st.plotly_chart(fig1, use_container_width=True)
-
-    with c2:
-      with st.container(border=True):
-        st.markdown(
-            '<div class="chart-title">ยอดงาน Complete รับกะดึก'
-            " (00.00-06.00)</div>",
-            unsafe_allow_html=True,
-        )
-        fig2 = px.pie(
-            names=["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"],
-            values=[work_night, work_morning, extra_work],
-            hole=0.6,
-            color_discrete_sequence=["#27845c", "#a4443d", "#82a957"],
-        )
-        fig2.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=True,
-            legend=dict(
-                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
-            ),
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-
-    with c3:
-      with st.container(border=True):
-        st.markdown(
-            '<div class="chart-title">สรุปงานรับคงเหลือทั้งหมด (Pallets)</div>',
-            unsafe_allow_html=True,
-        )
-        fig3 = px.pie(
-            names=[
-                "กำลังลงสินค้า",
-                "รอลงสินค้า",
-                "Supplier กะดึก",
-                "Supplier กะเช้า",
-            ],
-            values=[
-                recv_start,
-                in_transit,
-                sup_night_missing,
-                sup_morning_missing,
-            ],
-            hole=0.6,
-            color_discrete_sequence=["#3b82f6", "#ef4444", "#10b981", "#8b5cf6"],
-        )
-        fig3.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=True,
-            legend=dict(
-                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
-            ),
-        )
-        st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown(
-        '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงานประจำวัน</div>',
-        unsafe_allow_html=True,
-    )
+  c1, c2, c3 = st.columns(3)
+  with c1:
     with st.container(border=True):
-      col_a, col_b, col_c = st.columns(3)
-      with col_a:
-        inv_all = st.number_input(
-            "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
-        )
-        night_received = st.number_input(
-            "ยอดงานรับกะดึก (ทั้งหมด)",
-            value=night_received,
-            step=1,
-            key="night_received",
-        )
-        morning_received = st.number_input(
-            "ยอดงานรับกะเช้า (ทั้งหมด)",
-            value=morning_received,
-            step=1,
-            key="morning_received",
-        )
-      with col_b:
-        complete_night = st.number_input(
-            "ยอดงาน Complete รับกะดึก",
-            value=complete_night,
-            step=1,
-            key="complete_night",
-        )
-        work_night = st.number_input(
-            "งาน Complete - กะดึก", value=work_night, step=1, key="work_night"
-        )
-        work_morning = st.number_input(
-            "งาน Complete - กะเช้า",
-            value=work_morning,
-            step=1,
-            key="work_morning",
-        )
-        extra_work = st.number_input(
-            "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work"
-        )
-      with col_c:
-        total_remaining = st.number_input(
-            "สรุปงานรับคงเหลือทั้งหมด",
-            value=total_remaining,
-            step=1,
-            key="total_remaining",
-        )
-        recv_start = st.number_input(
-            "กำลังลงสินค้า (Receiving Start)",
-            value=recv_start,
-            step=1,
-            key="recv_start",
-        )
-        in_transit = st.number_input(
-            "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit"
-        )
-        sup_night_missing = st.number_input(
-            "Supplier ยังไม่มาส่งกะดึก",
-            value=sup_night_missing,
-            step=1,
-            key="sup_night_missing",
-        )
-        sup_morning_missing = st.number_input(
-            "Supplier ยังไม่มาส่งกะเช้า",
-            value=sup_morning_missing,
-            step=1,
-            key="sup_morning_missing",
-        )
+      st.markdown(
+          '<div class="chart-title">ยอดงานประมาณการรับทั้งหมด</div>',
+          unsafe_allow_html=True,
+      )
+      fig1 = px.pie(
+          names=["ยอดงานประมาณการรับทั้งหมด", "ยอดงานรับกะดึก (ทั้งหมด)"],
+          values=[inv_all, night_received],
+          hole=0.6,
+          color_discrete_sequence=["#27845c", "#a4443d"],
+      )
+      fig1.update_layout(
+          margin=dict(t=10, b=10, l=10, r=10),
+          showlegend=True,
+          legend=dict(
+              orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
+          ),
+      )
+      st.plotly_chart(fig1, use_container_width=True)
 
-  # --- ชีต: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) ---
-  else:
-    st.subheader(
-        f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {hist_date.strftime('%d/%m/%Y')}"
-        " (ย้อนหลัง)"
-    )
-    st.markdown("แสดงผลตารางและกราฟเปรียบเทียบเชิงวิเคราะห์แบบทางการ")
-
-    hist_inv = st.session_state.get("hist_inv", 6126)
-    hist_total_recv = st.session_state.get("hist_total_recv", 5904)
-    hist_complete = st.session_state.get("hist_complete", 5722)
-    hist_extra = st.session_state.get("hist_extra", 138)
-    hist_delayed = st.session_state.get("hist_delayed", 0)
-    hist_not_po = st.session_state.get("hist_not_po", 73)
-    hist_not_billed = st.session_state.get("hist_not_billed", 250)
-
-    hist_not_recv = hist_delayed + hist_not_po + hist_not_billed
-    hist_pct_not_recv = (
-        (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
-    )
-
-    hist_report_values = [
-        ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
-        ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
-        ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
-        ("งานนอกรอบ Complete", f"{hist_extra:,}", False),
-        ("งานไม่ได้รับ", f"{hist_not_recv:,}", True),
-        ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
-        ("เลื่อนส่ง", f"{hist_delayed:,}", False),
-        ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
-        ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
-        ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
-    ]
-
-    hist_cells = "".join(
-        f'<div class="report-cell"><div class="report-label">{label}</div>'
-        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-        for label, value, alert in hist_report_values
-    )
-    st.markdown(
-        f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
-        f' ประจำวันที่ {hist_date.strftime("%d/%m/%Y")} <span'
-        f' class="report-date">(00.00-22.00 น.)</span></div><div'
-        f' class="report-grid" style="grid-template-columns: repeat(10, minmax(0, 1fr));">{hist_cells}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
-      with st.container(border=True):
-        st.markdown(
-            '<div class="chart-title">📊 สรุปภาพรวมงานรับและงานค้างส่ง</div>',
-            unsafe_allow_html=True,
-        )
-        df_bar_v = pd.DataFrame({
-            "ประเภทงาน": [
-                "งานรับทั้งหมด (16.10 น.)",
-                "งาน Complete (22.00 น.)",
-                "งานนอกรอบ",
-                "งานไม่ได้รับ",
-            ],
-            "จำนวน (Pallets)": [
-                hist_total_recv,
-                hist_complete,
-                hist_extra,
-                hist_not_recv,
-            ],
-        })
-        fig_v = px.bar(
-            df_bar_v,
-            x="ประเภทงาน",
-            y="จำนวน (Pallets)",
-            text="จำนวน (Pallets)",
-            color="ประเภทงาน",
-            color_discrete_map={
-                "งานรับทั้งหมด (16.10 น.)": "#174b3a",
-                "งาน Complete (22.00 น.)": "#eab308",
-                "งานนอกรอบ": "#d97706",
-                "งานไม่ได้รับ": "#dc2626",
-            },
-        )
-        fig_v.update_traces(
-            textposition="outside",
-            textfont_size=13,
-            textfont_weight="bold",
-            marker_line_width=1.5,
-            marker_line_color="white",
-        )
-        fig_v.update_layout(
-            margin=dict(t=30, b=20, l=20, r=20),
-            showlegend=False,
-            xaxis_title="",
-            yaxis_title="จำนวน (Pallets)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig_v, use_container_width=True)
-
-    with col_chart2:
-      with st.container(border=True):
-        st.markdown(
-            '<div class="chart-title">🚨 วิเคราะห์สาเหตุงานไม่ได้รับ</div>',
-            unsafe_allow_html=True,
-        )
-        df_bar_h = pd.DataFrame({
-            "สาเหตุ": [
-                "งานไม่ได้รับทั้งหมด",
-                "ยังไม่ยื่นบิล",
-                "ส่งไม่ครบตาม PO",
-                "เลื่อนส่ง",
-            ],
-            "จำนวน (Pallets)": [
-                hist_not_recv,
-                hist_not_billed,
-                hist_not_po,
-                hist_delayed,
-            ],
-        })
-        df_bar_h = df_bar_h.sort_values(by="จำนวน (Pallets)", ascending=True)
-        fig_h = px.bar(
-            df_bar_h,
-            x="จำนวน (Pallets)",
-            y="สาเหตุ",
-            text="จำนวน (Pallets)",
-            orientation="h",
-            color="สาเหตุ",
-            color_discrete_map={
-                "งานไม่ได้รับทั้งหมด": "#fca5a5",
-                "ยังไม่ยื่นบิล": "#10b981",
-                "ส่งไม่ครบตาม PO": "#facc15",
-                "เลื่อนส่ง": "#94a3b8",
-            },
-        )
-        fig_h.update_traces(
-            textposition="outside",
-            textfont_size=13,
-            textfont_weight="bold",
-            marker_line_width=1.5,
-            marker_line_color="white",
-        )
-        fig_h.update_layout(
-            margin=dict(t=30, b=20, l=20, r=20),
-            showlegend=False,
-            xaxis_title="จำนวน (Pallets)",
-            yaxis_title="",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-        )
-        st.plotly_chart(fig_h, use_container_width=True)
-
-    st.markdown(
-        '<div class="summary-title">✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)</div>',
-        unsafe_allow_html=True,
-    )
+  with c2:
     with st.container(border=True):
-      hc1, hc2, hc3, hc4 = st.columns(4)
-      with hc1:
-        hist_inv = st.number_input(
-            "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
-        )
-        hist_total_recv = st.number_input(
-            "งานรับทั้งหมด (16.10 น.)",
-            value=hist_total_recv,
-            step=1,
-            key="hist_total_recv",
-        )
-      with hc2:
-        hist_complete = st.number_input(
-            "งาน Complete (22.00 น.)",
-            value=hist_complete,
-            step=1,
-            key="hist_complete",
-        )
-        hist_extra = st.number_input(
-            "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
-        )
-      with hc3:
-        hist_delayed = st.number_input(
-            "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
-        )
-        hist_not_po = st.number_input(
-            "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
-        )
-      with hc4:
-        hist_not_billed = st.number_input(
-            "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
-        )
+      st.markdown(
+          '<div class="chart-title">ยอดงาน Complete รับกะดึก (00.00-06.00)</div>',
+          unsafe_allow_html=True,
+      )
+      fig2 = px.pie(
+          names=["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"],
+          values=[work_night, work_morning, extra_work],
+          hole=0.6,
+          color_discrete_sequence=["#27845c", "#a4443d", "#82a957"],
+      )
+      fig2.update_layout(
+          margin=dict(t=10, b=10, l=10, r=10),
+          showlegend=True,
+          legend=dict(
+              orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
+          ),
+      )
+      st.plotly_chart(fig2, use_container_width=True)
+
+  with c3:
+    with st.container(border=True):
+      st.markdown(
+          '<div class="chart-title">สรุปงานรับคงเหลือทั้งหมด (Pallets)</div>',
+          unsafe_allow_html=True,
+      )
+      fig3 = px.pie(
+          names=[
+              "กำลังลงสินค้า",
+              "รอลงสินค้า",
+              "Supplier กะดึก",
+              "Supplier กะเช้า",
+          ],
+          values=[
+              recv_start,
+              in_transit,
+              sup_night_missing,
+              sup_morning_missing,
+          ],
+          hole=0.6,
+          color_discrete_sequence=["#3b82f6", "#ef4444", "#10b981", "#8b5cf6"],
+      )
+      fig3.update_layout(
+          margin=dict(t=10, b=10, l=10, r=10),
+          showlegend=True,
+          legend=dict(
+              orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
+          ),
+      )
+      st.plotly_chart(fig3, use_container_width=True)
+
+  st.markdown(
+      '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงานประจำวัน</div>',
+      unsafe_allow_html=True,
+  )
+  with st.container(border=True):
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+      inv_all = st.number_input(
+          "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
+      )
+      night_received = st.number_input(
+          "ยอดงานรับกะดึก (ทั้งหมด)",
+          value=night_received,
+          step=1,
+          key="night_received",
+      )
+      morning_received = st.number_input(
+          "ยอดงานรับกะเช้า (ทั้งหมด)",
+          value=morning_received,
+          step=1,
+          key="morning_received",
+      )
+    with col_b:
+      complete_night = st.number_input(
+          "ยอดงาน Complete รับกะดึก",
+          value=complete_night,
+          step=1,
+          key="complete_night",
+      )
+      work_night = st.number_input(
+          "งาน Complete - กะดึก", value=work_night, step=1, key="work_night"
+      )
+      work_morning = st.number_input(
+          "งาน Complete - กะเช้า",
+          value=work_morning,
+          step=1,
+          key="work_morning",
+      )
+      extra_work = st.number_input(
+          "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work"
+      )
+    with col_c:
+      total_remaining = st.number_input(
+          "สรุปงานรับคงเหลือทั้งหมด",
+          value=total_remaining,
+          step=1,
+          key="total_remaining",
+      )
+      recv_start = st.number_input(
+          "กำลังลงสินค้า (Receiving Start)",
+          value=recv_start,
+          step=1,
+          key="recv_start",
+      )
+      in_transit = st.number_input(
+          "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit"
+      )
+      sup_night_missing = st.number_input(
+          "Supplier ยังไม่มาส่งกะดึก",
+          value=sup_night_missing,
+          step=1,
+          key="sup_night_missing",
+      )
+      sup_morning_missing = st.number_input(
+          "Supplier ยังไม่มาส่งกะเช้า",
+          value=sup_morning_missing,
+          step=1,
+          key="sup_morning_missing",
+      )
 
 # =========================================================================
-# 🔄 โปรแกรมที่ 2: โปรแกรมประมวลผล / Real-time Utility
+# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
 # =========================================================================
 else:
+  st.subheader(
+      f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {hist_date.strftime('%d/%m/%Y')}"
+      " (ย้อนหลัง)"
+  )
+  st.markdown("แสดงผลตารางและกราฟเปรียบเทียบเชิงวิเคราะห์แบบทางการ")
+
+  hist_inv = st.session_state.get("hist_inv", 6126)
+  hist_total_recv = st.session_state.get("hist_total_recv", 5904)
+  hist_complete = st.session_state.get("hist_complete", 5722)
+  hist_extra = st.session_state.get("hist_extra", 138)
+  hist_delayed = st.session_state.get("hist_delayed", 0)
+  hist_not_po = st.session_state.get("hist_not_po", 73)
+  hist_not_billed = st.session_state.get("hist_not_billed", 250)
+
+  hist_not_recv = hist_delayed + hist_not_po + hist_not_billed
+  hist_pct_not_recv = (
+      (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
+  )
+
+  hist_report_values = [
+      ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
+      ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
+      ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
+      ("งานนอกรอบ Complete", f"{hist_extra:,}", False),
+      ("งานไม่ได้รับ", f"{hist_not_recv:,}", True),
+      ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
+      ("เลื่อนส่ง", f"{hist_delayed:,}", False),
+      ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
+      ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
+      ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
+  ]
+
+  hist_cells = "".join(
+      f'<div class="report-cell"><div class="report-label">{label}</div>'
+      f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+      for label, value, alert in hist_report_values
+  )
   st.markdown(
-      '<div class="hero" style="background: linear-gradient(115deg, #1b3a4b 0%,'
-      ' #28526f 72%, #3a7095 100%);"><div class="hero-kicker">REAL-TIME UTILITY'
-      ' SYSTEM</div><div class="hero-title">🔄 โปรแกรมประมวลผล / Real-time'
-      ' Utility</div><div class="hero-subtitle">ระบบประมวลผลข้อมูลและจัดการคิวแบบ'
-      " Real-time</div></div>",
+      f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
+      f' ประจำวันที่ {hist_date.strftime("%d/%m/%Y")} <span'
+      f' class="report-date">(00.00-22.00 น.)</span></div><div'
+      f' class="report-grid" style="grid-template-columns: repeat(10, minmax(0, 1fr));">{hist_cells}</div></div>',
       unsafe_allow_html=True,
   )
 
-  st.subheader("⚙️ แดชบอร์ดจัดการคิวและประมวลผลข้อมูล Real-time")
-  st.info(
-      "โปรแกรมนี้ถูกแยกการทำงานมาไว้ในระบบกลางอย่างเป็นระเบียบ ท่านสามารถอัปโหลด"
-      "ไฟล์ข้อมูลหรือจัดการสถานะคิวได้ที่นี่"
-  )
+  col_chart1, col_chart2 = st.columns(2)
+  with col_chart1:
+    with st.container(border=True):
+      st.markdown(
+          '<div class="chart-title">📊 สรุปภาพรวมงานรับและงานค้างส่ง</div>',
+          unsafe_allow_html=True,
+      )
+      df_bar_v = pd.DataFrame({
+          "ประเภทงาน": [
+              "งานรับทั้งหมด (16.10 น.)",
+              "งาน Complete (22.00 น.)",
+              "งานนอกรอบ",
+              "งานไม่ได้รับ",
+          ],
+          "จำนวน (Pallets)": [
+              hist_total_recv,
+              hist_complete,
+              hist_extra,
+              hist_not_recv,
+          ],
+      })
+      fig_v = px.bar(
+          df_bar_v,
+          x="ประเภทงาน",
+          y="จำนวน (Pallets)",
+          text="จำนวน (Pallets)",
+          color="ประเภทงาน",
+          color_discrete_map={
+              "งานรับทั้งหมด (16.10 น.)": "#174b3a",
+              "งาน Complete (22.00 น.)": "#eab308",
+              "งานนอกรอบ": "#d97706",
+              "งานไม่ได้รับ": "#dc2626",
+          },
+      )
+      fig_v.update_traces(
+          textposition="outside",
+          textfont_size=13,
+          textfont_weight="bold",
+          marker_line_width=1.5,
+          marker_line_color="white",
+      )
+      fig_v.update_layout(
+          margin=dict(t=30, b=20, l=20, r=20),
+          showlegend=False,
+          xaxis_title="",
+          yaxis_title="จำนวน (Pallets)",
+          plot_bgcolor="rgba(0,0,0,0)",
+          paper_bgcolor="rgba(0,0,0,0)",
+      )
+      st.plotly_chart(fig_v, use_container_width=True)
 
-  col_r1, col_r2 = st.columns(2)
-  with col_r1:
+  with col_chart2:
     with st.container(border=True):
-      st.markdown("### 📥 อัปโหลดไฟล์ประมวลผล Real-time")
-      uploaded_realtime = st.file_uploader(
-          "เลือกไฟล์ Excel หรือ CSV", type=["xlsx", "csv"], key="rt_file"
+      st.markdown(
+          '<div class="chart-title">🚨 วิเคราะห์สาเหตุงานไม่ได้รับ</div>',
+          unsafe_allow_html=True,
       )
-      if uploaded_realtime:
-        st.success(f"อัปโหลดไฟล์ {uploaded_realtime.name} สำเร็จ")
-  with col_r2:
-    with st.container(border=True):
-      st.markdown("### 📈 สถานะระบบเชื่อมต่อ")
-      st.metric(
-          label="สถานะเซิร์ฟเวอร์", value="Active / Online", delta="Real-time"
+      df_bar_h = pd.DataFrame({
+          "สาเหตุ": [
+              "งานไม่ได้รับทั้งหมด",
+              "ยังไม่ยื่นบิล",
+              "ส่งไม่ครบตาม PO",
+              "เลื่อนส่ง",
+          ],
+          "จำนวน (Pallets)": [
+              hist_not_recv,
+              hist_not_billed,
+              hist_not_po,
+              hist_delayed,
+          ],
+      })
+      df_bar_h = df_bar_h.sort_values(by="จำนวน (Pallets)", ascending=True)
+      fig_h = px.bar(
+          df_bar_h,
+          x="จำนวน (Pallets)",
+          y="สาเหตุ",
+          text="จำนวน (Pallets)",
+          orientation="h",
+          color="สาเหตุ",
+          color_discrete_map={
+              "งานไม่ได้รับทั้งหมด": "#fca5a5",
+              "ยังไม่ยื่นบิล": "#10b981",
+              "ส่งไม่ครบตาม PO": "#facc15",
+              "เลื่อนส่ง": "#94a3b8",
+          },
       )
-      st.metric(
-          label="คิวงานปัจจุบัน", value="0 รายการ", delta="พร้อมประมวลผล"
+      fig_h.update_traces(
+          textposition="outside",
+          textfont_size=13,
+          textfont_weight="bold",
+          marker_line_width=1.5,
+          marker_line_color="white",
+      )
+      fig_h.update_layout(
+          margin=dict(t=30, b=20, l=20, r=20),
+          showlegend=False,
+          xaxis_title="จำนวน (Pallets)",
+          yaxis_title="",
+          plot_bgcolor="rgba(0,0,0,0)",
+          paper_bgcolor="rgba(0,0,0,0)",
+      )
+      st.plotly_chart(fig_h, use_container_width=True)
+
+  st.markdown(
+      '<div class="summary-title">✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)</div>',
+      unsafe_allow_html=True,
+  )
+  with st.container(border=True):
+    hc1, hc2, hc3, hc4 = st.columns(4)
+    with hc1:
+      hist_inv = st.number_input(
+          "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
+      )
+      hist_total_recv = st.number_input(
+          "งานรับทั้งหมด (16.10 น.)",
+          value=hist_total_recv,
+          step=1,
+          key="hist_total_recv",
+      )
+    with hc2:
+      hist_complete = st.number_input(
+          "งาน Complete (22.00 น.)",
+          value=hist_complete,
+          step=1,
+          key="hist_complete",
+      )
+      hist_extra = st.number_input(
+          "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
+      )
+    with hc3:
+      hist_delayed = st.number_input(
+          "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
+      )
+      hist_not_po = st.number_input(
+          "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
+      )
+    with hc4:
+      hist_not_billed = st.number_input(
+          "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
       )
