@@ -446,15 +446,13 @@ if main_app_selection == "📊 รายงานการรับสินค�
             key="sup_morning_missing",
         )
 
-  # --- ชีต: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) (ปรับกราฟสไตล์ Sweet Excel พรีเมียม) ---
+  # --- ชีต: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) ---
   else:
     st.subheader(
         f"📋 สรุปงานรับและงานค้างส่ง ประจำวันที่ {report_date.strftime('%d/%m/%Y')}"
         " (ย้อนหลัง)"
     )
-    st.markdown(
-        "แดชบอร์ดวิเคราะห์เชิงลึก ดีไซน์สไตล์ Sweet Excel พรีเมียม"
-    )
+    st.markdown("แสดงผลตารางและกราฟเปรียบเทียบเชิงวิเคราะห์แบบทางการ")
 
     hist_inv = st.session_state.get("hist_inv", 6126)
     hist_total_recv = st.session_state.get("hist_total_recv", 5904)
@@ -499,14 +497,13 @@ if main_app_selection == "📊 รายงานการรับสินค�
     with col_chart1:
       with st.container(border=True):
         st.markdown(
-            '<div class="chart-title">📊 สรุปภาพรวมงานรับ (สไตล์พรีเมียม)'
-            "</div>",
+            '<div class="chart-title">📊 สรุปภาพรวมงานรับและงานค้างส่ง</div>',
             unsafe_allow_html=True,
         )
         df_bar_v = pd.DataFrame({
             "ประเภทงาน": [
-                "งานรับทั้งหมด\n(16.10 น.)",
-                "งาน Complete\n(22.00 น.)",
+                "งานรับทั้งหมด (16.10 น.)",
+                "งาน Complete (22.00 น.)",
                 "งานนอกรอบ",
                 "งานไม่ได้รับ",
             ],
@@ -517,30 +514,33 @@ if main_app_selection == "📊 รายงานการรับสินค�
                 hist_not_recv,
             ],
         })
-        # กราฟสไตล์ Sweet Excel แท่งแคปซูล/โค้งมน โทนสีหรูหรา
-        fig_v = go.Figure(
-            data=[
-                go.Bar(
-                    x=df_bar_v["ประเภทงาน"],
-                    y=df_bar_v["จำนวน (Pallets)"],
-                    text=df_bar_v["จำนวน (Pallets)"],
-                    textposition="outside",
-                    marker=dict(
-                        color=["#174b3a", "#eab308", "#d97706", "#dc2626"],
-                        cornerRadius=12,
-                        line=dict(width=2, color="white"),
-                    ),
-                )
-            ]
+        fig_v = px.bar(
+            df_bar_v,
+            x="ประเภทงาน",
+            y="จำนวน (Pallets)",
+            text="จำนวน (Pallets)",
+            color="ประเภทงาน",
+            color_discrete_map={
+                "งานรับทั้งหมด (16.10 น.)": "#174b3a",
+                "งาน Complete (22.00 น.)": "#eab308",
+                "งานนอกรอบ": "#d97706",
+                "งานไม่ได้รับ": "#dc2626",
+            },
+        )
+        fig_v.update_traces(
+            textposition="outside",
+            textfont_size=13,
+            textfont_weight="bold",
+            marker_line_width=1.5,
+            marker_line_color="white",
         )
         fig_v.update_layout(
-            margin=dict(t=35, b=20, l=20, r=20),
+            margin=dict(t=30, b=20, l=20, r=20),
             showlegend=False,
             xaxis_title="",
             yaxis_title="จำนวน (Pallets)",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="IBM Plex Sans Thai", size=13),
         )
         st.plotly_chart(fig_v, use_container_width=True)
 
@@ -565,30 +565,34 @@ if main_app_selection == "📊 รายงานการรับสินค�
             ],
         })
         df_bar_h = df_bar_h.sort_values(by="จำนวน (Pallets)", ascending=True)
-        fig_h = go.Figure(
-            data=[
-                go.Bar(
-                    y=df_bar_h["สาเหตุ"],
-                    x=df_bar_h["จำนวน (Pallets)"],
-                    text=df_bar_h["จำนวน (Pallets)"],
-                    textposition="outside",
-                    orientation="h",
-                    marker=dict(
-                        color=["#94a3b8", "#facc15", "#10b981", "#fca5a5"],
-                        cornerRadius=10,
-                        line=dict(width=1.5, color="white"),
-                    ),
-                )
-            ]
+        fig_h = px.bar(
+            df_bar_h,
+            x="จำนวน (Pallets)",
+            y="สาเหตุ",
+            text="จำนวน (Pallets)",
+            orientation="h",
+            color="สาเหตุ",
+            color_discrete_map={
+                "งานไม่ได้รับทั้งหมด": "#fca5a5",
+                "ยังไม่ยื่นบิล": "#10b981",
+                "ส่งไม่ครบตาม PO": "#facc15",
+                "เลื่อนส่ง": "#94a3b8",
+            },
+        )
+        fig_h.update_traces(
+            textposition="outside",
+            textfont_size=13,
+            textfont_weight="bold",
+            marker_line_width=1.5,
+            marker_line_color="white",
         )
         fig_h.update_layout(
-            margin=dict(t=35, b=20, l=20, r=20),
+            margin=dict(t=30, b=20, l=20, r=20),
             showlegend=False,
             xaxis_title="จำนวน (Pallets)",
             yaxis_title="",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="IBM Plex Sans Thai", size=13),
         )
         st.plotly_chart(fig_h, use_container_width=True)
 
@@ -667,4 +671,3 @@ else:
       st.metric(
           label="คิวงานปัจจุบัน", value="0 รายการ", delta="พร้อมประมวลผล"
       )
-        
