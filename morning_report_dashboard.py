@@ -60,12 +60,13 @@ html, body, [class*="css"], [data-testid="stAppViewContainer"] {
     color: var(--ink);
 }
 .block-container {
-    padding-top: 2rem;
-    padding-bottom: 3rem;
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
     max-width: 1500px;
 }
 h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
 
+[data-testid="stVerticalBlock"] { gap: 0.6rem; }
 /* ----- แผ่นป้ายหัวข้อ (เหมือนกรอบชื่อกราฟในตัวอย่าง) ----- */
 .hero {
     background: linear-gradient(180deg, #ffffff 0%, #f1f4f5 100%);
@@ -74,7 +75,7 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
     padding: 18px 28px 16px;
     text-align: center;
     box-shadow: 0 6px 16px rgba(60, 80, 90, .14), inset 0 1px 0 #fff;
-    margin: 0 auto 10px;
+    margin: 0 auto 4px;
     max-width: 980px;
 }
 .hero-kicker { color: var(--muted); font-size: .78rem; font-weight: 600; letter-spacing: .14em; }
@@ -85,14 +86,14 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
     background: linear-gradient(90deg, #f59a0c, #e8456f, #a02a6f, #4aa3e8, #35c9a0, #9be07a);
 }
 .page-sub {
-    text-align: center; color: var(--muted); font-size: .9rem; margin: 6px 0 26px;
+    text-align: center; color: var(--muted); font-size: .9rem; margin: 2px 0 10px;
 }
 
 /* ----- ป้ายหัวข้อส่วนต่าง ๆ ----- */
 .section-title {
     display: flex; align-items: center; gap: 12px;
     color: var(--ink); font-size: 1.15rem; font-weight: 700;
-    margin: 34px 0 14px;
+    margin: 14px 0 4px;
 }
 .section-title::before {
     content: ""; width: 6px; height: 24px; border-radius: 3px;
@@ -103,14 +104,14 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
 .focus-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 22px;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 0;
 }
 .focus-card {
     background: linear-gradient(180deg, #ffffff 0%, #f4f6f7 100%);
     border: 1px solid #d3dce0;
     border-radius: 18px;
-    padding: 22px 28px 22px 34px;
+    padding: 16px 24px 16px 30px;
     box-shadow: 0 8px 20px rgba(60,80,90,.10), inset 0 1px 0 #fff;
     position: relative;
     overflow: hidden;
@@ -133,7 +134,7 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 8px 20px rgba(60,80,90,.10);
-    margin: 4px 0 8px;
+    margin: 0;
 }
 .report-head {
     background: linear-gradient(180deg, #ffffff 0%, #eef1f3 100%);
@@ -149,10 +150,10 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
 .report-cell {
     border-right: 1px solid #e3e9ec;
     border-bottom: 1px solid #e3e9ec;
-    padding: 14px 8px 12px;
+    padding: 10px 8px 8px;
     text-align: center;
     background: #fff;
-    min-height: 104px;
+    min-height: 84px;
     box-sizing: border-box;
 }
 .report-label { color: var(--muted); font-size: .7rem; line-height: 1.3; min-height: 36px; font-weight: 500; }
@@ -165,7 +166,7 @@ h1, h2, h3 { color: var(--ink); letter-spacing: -0.01em; }
     border: 1px solid #d3dce0;
     border-radius: 20px;
     box-shadow: 0 8px 20px rgba(60,80,90,.10), inset 0 1px 0 #fff;
-    padding: 1.3rem 1.5rem 1.2rem;
+    padding: 0.9rem 1rem 0.6rem;
 }
 .chart-title {
     color: var(--ink); font-size: 1.02rem; font-weight: 700;
@@ -586,7 +587,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     )
 
     st.markdown('<div class="section-title">กราฟสรุปภาพรวม</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3, gap="large")
+    c1, c2, c3 = st.columns(3, gap="small")
     with c1:
         with st.container(key="card_radial_1"):
             chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "% เทียบยอดประมาณการรับทั้งหมด")
@@ -637,7 +638,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         unsafe_allow_html=True,
     )
     with st.container(key="card_edit"):
-        col_a, col_b, col_c = st.columns(3, gap="large")
+        col_a, col_b, col_c = st.columns(3, gap="small")
         with col_a:
             inv_all = st.number_input(
                 "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
@@ -722,7 +723,7 @@ else:
     )
 
     st.markdown('<div class="section-title">กราฟสรุปภาพรวม</div>', unsafe_allow_html=True)
-    col_chart1, col_chart2 = st.columns([1.35, 1], gap="large")
+    col_chart1, col_chart2 = st.columns([1.35, 1], gap="small")
     with col_chart1:
         with st.container(key="card_hist_tube"):
             chart_card_title(
@@ -759,7 +760,7 @@ else:
         unsafe_allow_html=True,
     )
     with st.container(key="card_edit_hist"):
-        hc1, hc2, hc3, hc4 = st.columns(4, gap="large")
+        hc1, hc2, hc3, hc4 = st.columns(4, gap="small")
         with hc1:
             hist_inv = st.number_input(
                 "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
