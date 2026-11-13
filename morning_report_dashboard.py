@@ -85,25 +85,6 @@ h3 { font-size: 1.05rem !important; font-weight: 600 !important; }
 .section-caption { color: var(--muted); font-size: .84rem; margin-bottom: 12px; }
 .summary-title { color: var(--forest); font-size: 1.24rem; font-weight: 700; margin: 22px 0 12px; }
 
-.metric-card {
-    min-height: 128px;
-    height: 100%;
-    box-sizing: border-box;
-    padding: 17px 18px;
-    border-radius: 15px;
-    background: white;
-    border: 1px solid var(--line);
-    border-top: 4px solid var(--green);
-    box-shadow: 0 5px 16px rgba(30, 67, 48, .055);
-}
-.metric-label { color: var(--muted); font-size: .88rem; font-weight: 500; }
-.metric-value { color: var(--forest); font-size: 1.72rem; font-weight: 700; line-height: 1.35; margin-top: 6px; }
-.metric-unit { color: var(--muted); font-size: .78rem; margin-top: 1px; }
-.metric-card.emphasis {
-    background: #eaf4ee;
-    border-color: #cce2d3;
-    border-top-color: #174b3a;
-}
 .report-wrap {
     background: white;
     border: 1px solid #c8d8cc;
@@ -249,6 +230,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# เมนูด้านข้าง Sidebar
 st.sidebar.header("📁 เลือกมุมมองข้อมูล")
 sheet_selection = st.sidebar.radio(
     "เลือกชีต:",
@@ -258,6 +240,54 @@ st.sidebar.markdown("---")
 report_date = st.sidebar.date_input(
     "ประจำวันที่", value=pd.to_datetime("2026-11-12")
 )
+
+# ส่วน Import ไฟล์รายงาน 3 ตัวใน Sidebar
+st.sidebar.markdown("---")
+st.sidebar.header("📥 Import ไฟล์รายงานระบบ")
+uploaded_rp01 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
+)
+uploaded_rp03 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
+)
+uploaded_rp42 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
+)
+
+df_rp01, df_rp03, df_rp42 = None, None, None
+if uploaded_rp01:
+  try:
+    df_rp01 = (
+        pd.read_csv(uploaded_rp01)
+        if uploaded_rp01.name.endswith(".csv")
+        else pd.read_excel(uploaded_rp01)
+    )
+    st.sidebar.success(f"RP01 สำเร็จ ({len(df_rp01):,} แถว)")
+  except Exception as e:
+    st.sidebar.error(f"RP01 Error: {e}")
+
+if uploaded_rp03:
+  try:
+    df_rp03 = (
+        pd.read_csv(uploaded_rp03)
+        if uploaded_rp03.name.endswith(".csv")
+        else pd.read_excel(uploaded_rp03)
+    )
+    st.sidebar.success(f"RP03 สำเร็จ ({len(df_rp03):,} แถว)")
+  except Exception as e:
+    st.sidebar.error(f"RP03 Error: {e}")
+
+if uploaded_rp42:
+  try:
+    df_rp42 = (
+        pd.read_csv(uploaded_rp42)
+        if uploaded_rp42.name.endswith(".csv")
+        else pd.read_excel(uploaded_rp42)
+    )
+    st.sidebar.success(f"RP42 สำเร็จ ({len(df_rp42):,} แถว)")
+  except Exception as e:
+    st.sidebar.error(f"RP42 Error: {e}")
+
 st.sidebar.caption("DCSB Warehouse · Morning Report")
 
 if sheet_selection == "สถานการณ์การรับ (กะเช้า)":
@@ -269,254 +299,4 @@ if sheet_selection == "สถานการณ์การรับ (กะเ�
     st.markdown(
         f'<div class="section-caption">กะเช้า · ประจำวันที่'
         f' {report_date.strftime("%d/%m/%Y")}</div>',
-        unsafe_allow_html=True,
-    )
-
-    # อ่านค่าจาก session state หรือใช้ค่าเริ่มต้น
-    inv_pallets = st.session_state.get("inv_pallets", 6126)
-    total_received = st.session_state.get("total_received", 5904)
-    complete_pallets = st.session_state.get("complete_pallets", 5722)
-    extra_work = st.session_state.get("extra_work", 138)
-    not_received_po = st.session_state.get("not_received_po", 73)
-    not_billed = st.session_state.get("not_billed", 250)
-    delayed_delivery = st.session_state.get("delayed_delivery", 0)
-
-    total_not_received = not_received_po + not_billed + delayed_delivery
-    percent_not_received = (
-        (total_not_received / total_received * 100) if total_received > 0 else 0
-    )
-
-    # ตารางสรุป 10 ช่อง (เรียงตามลำดับ Excel ต้นฉบับ)
-    report_values = [
-        ("ประมาณการรับ(Inventory)", f"{inv_pallets:,}", False),
-        ("งานรับทั้งหมด(16.10 น.)", f"{total_received:,}", False),
-        ("งาน Complete(22.00 น.)", f"{complete_pallets:,}", False),
-        ("งานนอกรอบ Complete", f"{extra_work:,}", False),
-        ("งานไม่ได้รับ", f"{total_not_received:,}", True),
-        ("งานไม่ได้รับ (%)", f"{percent_not_received:.2f}%", True),
-        ("เลื่อนส่ง", f"{delayed_delivery:,}", False),
-        ("ส่งไม่ครบตาม PO", f"{not_received_po:,}", False),
-        ("ยังไม่ยื่นบิล", f"{not_billed:,}", False),
-        ("งานไม่ได้รับทั้งหมด", f"{total_not_received:,}", True),
-    ]
-
-    cells = "".join(
-        f'<div class="report-cell"><div class="report-label">{label}</div>'
-        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-        for label, value, alert in report_values
-    )
-    st.markdown(
-        f'<div class="report-wrap"><div class="report-head">สรุปงานรับและงานค้างส่ง'
-        f' ประจำวันที่ {report_date.strftime("%d/%m/%Y")} <span'
-        f' class="report-date">(00.00–22.00 น.)</span></div><div'
-        f' class="report-grid">{cells}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    # กราฟแสดงผล
-    left_chart, right_chart = st.columns([1.15, 1])
-
-    receipt_items = [
-        ("งานรับทั้งหมด (16.10 น.)", total_received, "#27845c"),
-        ("งาน Complete (22.00 น.)", complete_pallets, "#82a957"),
-        ("งานนอกรอบ", extra_work, "#d4a745"),
-        ("งานไม่ได้รับ", total_not_received, "#c87568"),
-    ]
-    max_receipt = (
-        max((value for _, value, _ in receipt_items), default=1) or 1
-    )
-    vertical_bars = "".join(
-        f'<div class="vitem"><div class="vvalue">{value:,}</div>'
-        f'<div class="vbar"'
-        f' style="height:{max(2, value / max_receipt * 72):.1f}%;background:{color}"></div>'
-        f'<div class="vlabel">{label}</div></div>'
-        for label, value, color in receipt_items
-    )
-
-    reasons = [
-        ("งานไม่ได้รับทั้งหมด", total_not_received, "#c87568"),
-        ("ยังไม่ยื่นบิล", not_billed, "#27845c"),
-        ("ส่งไม่ครบตาม PO", not_received_po, "#82a957"),
-        ("เลื่อนส่ง", delayed_delivery, "#d4a745"),
-    ]
-    max_reason = max((value for _, value, _ in reasons), default=1) or 1
-    horizontal_bars = "".join(
-        f'<div class="hrow"><div class="hlabel">{label}</div><div'
-        f' class="htrack"><div class="hbar"'
-        f' style="width:{max(1.2, value / max_reason * 88):.1f}%;background:{color}"></div>'
-        f'<span class="hvalue"'
-        f' style="left:calc({max(1.2, value / max_reason * 88):.1f}% +'
-        f' 8px)">{value:,}</span></div></div>'
-        for label, value, color in reasons
-    )
-
-    with left_chart:
-      st.markdown(
-          f'<div class="chart-panel"><div class="chart-title">สรุปงานรับและงานค้าง</div>'
-          f'<div class="vchart">{vertical_bars}</div></div>',
-          unsafe_allow_html=True,
-      )
-    with right_chart:
-      st.markdown(
-          f'<div class="chart-panel"><div class="chart-title">สาเหตุงานไม่ได้รับ</div>'
-          f'<div class="hchart">{horizontal_bars}</div></div>',
-          unsafe_allow_html=True,
-      )
-
-    # ส่วนกรอกข้อมูลจัดเรียงตามต้นฉบับ Excel
-    st.markdown(
-        '<div class="summary-title">✏️ ปรับปรุงข้อมูลรายงาน</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(border=True):
-      st.markdown(
-          '<div class="section-heading">01 · ข้อมูลตั้งต้นและปริมาณรับสินค้า</div>'
-          '<div class="section-caption">แก้ไขตัวเลขแล้วตารางและกราฟด้านบนจะอัปเดตอัตโนมัติ</div>',
-          unsafe_allow_html=True,
-      )
-
-      col1, col2, col3 = st.columns(3)
-      with col1:
-        inv_pallets = st.number_input(
-            "ประมาณการรับ (Inventory)", value=inv_pallets, step=1, key="inv_pallets"
-        )
-      with col2:
-        total_received = st.number_input(
-            "งานรับทั้งหมด (16.10 น.)",
-            value=total_received,
-            step=1,
-            key="total_received",
-        )
-      with col3:
-        complete_pallets = st.number_input(
-            "งาน Complete (22.00 น.)",
-            value=complete_pallets,
-            step=1,
-            key="complete_pallets",
-        )
-
-      col4, col5 = st.columns(2)
-      with col4:
-        extra_work = st.number_input(
-            "งานนอกรอบ Complete", value=extra_work, step=1, key="extra_work"
-        )
-      with col5:
-        delayed_delivery = st.number_input(
-            "เลื่อนส่ง", value=delayed_delivery, step=1, key="delayed_delivery"
-        )
-
-      col6, col7 = st.columns(2)
-      with col6:
-        not_received_po = st.number_input(
-            "ส่งไม่ครบตาม PO", value=not_received_po, step=1, key="not_received_po"
-        )
-      with col7:
-        not_billed = st.number_input(
-            "ยังไม่ยื่นบิล", value=not_billed, step=1, key="not_billed"
-        )
-
-else:
-  st.subheader("📋 ข้อมูลย้อนหลัง / รายละเอียดเพิ่มเติม (Sheet 2)")
-  st.info("ส่วนนี้จัดเตรียมไว้สำหรับบันทึกประวัติย้อนหลังและข้อมูลรายละเอียด")
-
-  history_data = pd.DataFrame({
-      "วันที่": ["10/11/2026", "11/11/2026", "12/11/2026"],
-      "ประมาณการรับ": [6000, 6100, 6126],
-      "งานรับทั้งหมด": [5800, 5850, 5904],
-      "งาน Complete": [5600, 5680, 5722],
-      "งานไม่ได้รับ": [200, 170, 323],
-  })
-  st.dataframe(history_data, use_container_width=True)
-
-  st.markdown("### ✏️ บันทึกหมายเหตุประจำวัน")
-  daily_note = st.text_area(
-      "หมายเหตุเพิ่มเติมสำหรับผู้บริหาร:",
-      value="การรับสินค้าช่วงบ่ายมีความล่าช้าเล็กน้อยเนื่องจากระบบเครือข่ายขัดข้อง",
-  )
-  if st.button("บันทึกข้อมูลหมายเหตุ"):
-    st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
-
-import pandas as pd
-import streamlit as st
-
-# ตั้งค่าหน้าเว็บแดชบอร์ด
-st.set_page_config(
-    page_title="Import รายงาน RP01, RP03, RP42 | DCSB Warehouse",
-    page_icon="📥",
-    layout="wide",
-)
-
-st.title("📥 ระบบนำเข้าข้อมูลรายงาน (RP01, RP03, RP42)")
-st.markdown("อัปโหลดไฟล์รายงานเพื่อเตรียมประมวลผลเข้าสู่แดชบอร์ดอัตโนมัติ")
-
-st.markdown("---")
-
-# สร้าง 3 คอลัมน์สำหรับอัปโหลดรายงานทั้ง 3 ตัว
-col_rp1, col_rp3, col_rp42 = st.columns(3)
-
-with col_rp1:
-  st.subheader("📄 รายงาน RP01")
-  st.caption("ใช้สำหรับตัดงานโอนออก / ยอด Reject / ยอดคงเหลือ 22.00 น.")
-  uploaded_rp01 = st.file_uploader(
-      "เลือกไฟล์ RP01 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp01"
-  )
-  df_rp01 = None
-  if uploaded_rp01 is not None:
-    try:
-      if uploaded_rp01.name.endswith(".csv"):
-        df_rp01 = pd.read_csv(uploaded_rp01)
-      else:
-        df_rp01 = pd.read_excel(uploaded_rp01)
-      st.success(f"โหลด RP01 สำเร็จ ({len(df_rp01):,} แถว)")
-      with st.expander("ดูตัวอย่างข้อมูล RP01"):
-        st.dataframe(df_rp01.head(5), use_container_width=True)
-    except Exception as e:
-      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-
-with col_rp3:
-  st.subheader("📄 รายงาน RP03")
-  st.caption("ใช้สำหรับ VLOOKUP ตรวจสอบงานนอกรอบ (Complete Pallets)")
-  uploaded_rp03 = st.file_uploader(
-      "เลือกไฟล์ RP03 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp03"
-  )
-  df_rp03 = None
-  if uploaded_rp03 is not None:
-    try:
-      if uploaded_rp03.name.endswith(".csv"):
-        df_rp03 = pd.read_csv(uploaded_rp03)
-      else:
-        df_rp03 = pd.read_excel(uploaded_rp03)
-      st.success(f"โหลด RP03 สำเร็จ ({len(df_rp03):,} แถว)")
-      with st.expander("ดูตัวอย่างข้อมูล RP03"):
-        st.dataframe(df_rp03.head(5), use_container_width=True)
-    except Exception as e:
-      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-
-with col_rp42:
-  st.subheader("📄 รายงาน RP42")
-  st.caption("ใช้สำหรับดึงข้อมูลและตรวจสอบรายการเลื่อนส่ง")
-  uploaded_rp42 = st.file_uploader(
-      "เลือกไฟล์ RP42 (.xlsx, .csv)", type=["xlsx", "xls", "csv"], key="rp42"
-  )
-  df_rp42 = None
-  if uploaded_rp42 is not None:
-    try:
-      if uploaded_rp42.name.endswith(".csv"):
-        df_rp42 = pd.read_csv(uploaded_rp42)
-      else:
-        df_rp42 = pd.read_excel(uploaded_rp42)
-      st.success(f"โหลด RP42 สำเร็จ ({len(df_rp42):,} แถว)")
-      with st.expander("ดูตัวอย่างข้อมูล RP42"):
-        st.dataframe(df_rp42.head(5), use_container_width=True)
-    except Exception as e:
-      st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-
-st.markdown("---")
-if st.button("🔄 ยืนยันการประมวลผลข้อมูลทั้ง 3 ไฟล์"):
-  if uploaded_rp01 and uploaded_rp03 and uploaded_rp42:
-    st.success(
-        "ระบบบันทึกและเตรียมพร้อมไฟล์รายงานทั้ง 3 ชุดเรียบร้อยแล้ว!"
-        " แจ้งเงื่อนไขการดึงข้อมูลต่อได้เลยครับ"
-    )
-  else:
-    st.warning("กรุณาอัปโหลดไฟล์ให้ครบทั้ง 3 รายงานก่อนกดประมวลผลครับ")
+        unsafe_allow_
