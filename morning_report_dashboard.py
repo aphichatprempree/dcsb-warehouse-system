@@ -76,7 +76,59 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.025em; }
 [data-testid="stNumberInput"] input:focus { border-color:var(--teal);box-shadow:0 0 0 1px var(--teal); }
 .stButton > button { background:linear-gradient(135deg,#0c837b,#075f5b);color:white;border:0;border-radius:11px;font-weight:600;padding:.58rem 1rem;box-shadow:0 5px 12px rgba(8,126,120,.18); }
 .stButton > button:hover { background:#0a6e68;color:white;box-shadow:0 7px 16px rgba(8,126,120,.24); }
+/* ================= SIDEBAR (dark, pill menu) ================= */
+[data-testid="stSidebar"] { background:linear-gradient(185deg,#10303a 0%,#0e2630 55%,#0a1c24 100%); border-right:0; box-shadow:6px 0 30px rgba(10,28,36,.18); }
+[data-testid="stSidebarContent"] { padding:0 1rem 1.2rem; }
+[data-testid="stSidebarHeader"] { position:absolute; top:.5rem; right:.5rem; z-index:5; height:auto; padding:0; width:auto; background:transparent; }
+[data-testid="stSidebarUserContent"] { padding-top:1.3rem; }
+[data-testid="stSidebarHeader"] button, [data-testid="stSidebarCollapseButton"] button { color:#b4d2cd; }
+[data-testid="stSidebarHeader"] button:hover { background:rgba(255,255,255,.08); color:white; }
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.55rem; }
+[data-testid="stSidebar"] hr { display:none; }
+.sb-brand { display:flex; align-items:center; gap:12px; padding:2px 4px 14px; border-bottom:1px solid rgba(255,255,255,.09); margin-bottom:6px; }
+.sb-logo { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:1.2rem; background:linear-gradient(135deg,#2fd0a8,#0b8178); box-shadow:0 6px 14px rgba(15,160,140,.35); flex:none; }
+.sb-name { color:#fff; font-weight:700; font-size:1.02rem; line-height:1.2; }
+.sb-sub { color:#7fa6a1; font-size:.7rem; letter-spacing:.06em; }
+.sb-label { color:#7fa9a5; font-size:.74rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; line-height:1.7; margin:14px 4px 0; padding-bottom:.6rem; }
+/* radio -> pill menu (รองรับ Streamlit ทั้งรุ่นใหม่และรุ่นเก่า) */
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] { gap:.45rem; }
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > div { width:100%; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { width:100%; margin:0; padding:.7rem .75rem; border-radius:14px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.06); transition:all .16s ease; cursor:pointer; box-sizing:border-box; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:first-child { display:none; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:hover { background:rgba(255,255,255,.10); }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"] p,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] p { color:#aecac6; font-weight:600; font-size:.78rem; line-height:1.4; margin:0; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(120deg,#35c9a0,#0f9a8c); border-color:transparent; box-shadow:0 8px 18px rgba(32,190,160,.30); }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked) p,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p { color:#fff; }
+/* inputs */
+[data-testid="stSidebar"] label p, [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { color:#a9c4c0; font-size:.8rem; font-weight:500; }
+[data-testid="stSidebar"] [data-baseweb="input"], [data-testid="stSidebar"] [data-baseweb="base-input"] { background:rgba(255,255,255,.07) !important; border-radius:12px; border:1px solid rgba(255,255,255,.10); }
+[data-testid="stSidebar"] [data-baseweb="input"] input { color:#fff !important; -webkit-text-fill-color:#fff; background:transparent !important; }
+[data-testid="stSidebar"] [data-baseweb="input"]:focus-within { border-color:#35c9a0; }
+[data-testid="stSidebar"] [data-testid="stDateInputField"] { background:rgba(255,255,255,.07) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:12px; }
+[data-testid="stSidebar"] [data-testid="stDateInputField"] * { color:#fff !important; -webkit-text-fill-color:#fff; }
+[data-testid="stSidebar"] [data-testid="stDateInputField"] svg { fill:#9fd6c9; }
+[data-testid="stSidebar"] [data-testid="stDateInputField"]:focus-within { border-color:#35c9a0 !important; }
+/* file uploader */
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:rgba(255,255,255,.05); border:1px dashed rgba(255,255,255,.22); border-radius:12px; padding:.6rem .7rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * { color:#a9c4c0; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small, [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] span { font-size:.68rem !important; line-height:1.3; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { display:flex; flex-direction:column; align-items:flex-start; gap:.4rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { font-size:.78rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { background:rgba(255,255,255,.10); border:0; border-radius:9px; color:#fff; padding:.25rem .7rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover { background:#35c9a0; color:#0a1c24; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * { color:#d5e8e5; }
+/* footer chips */
+.sb-foot { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.09); }
+.sb-chip { font-size:.7rem; font-weight:600; padding:5px 12px; border-radius:999px; background:rgba(255,255,255,.07); color:#7fa6a1; }
+.sb-chip.on { background:#35c9a0; color:#073b34; }
 </style>
+
 """,
     unsafe_allow_html=True,
 )
@@ -362,16 +414,27 @@ def chart_card_title(title, sub=""):
 
 
 # --- Sidebar เมนูเลือกชีตรายงาน ---
-st.sidebar.header("📁 เลือกมุมมองรายงาน")
+NAV = [
+    "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
+    "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
+]
+NAV_ICON = {NAV[0]: "🕘", NAV[1]: "🌅"}
+
+st.sidebar.markdown(
+    '<div class="sb-brand"><div class="sb-logo">🌿</div><div>'
+    '<div class="sb-name">DCSB Warehouse</div>'
+    '<div class="sb-sub">REPORT SYSTEM</div></div></div>',
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown('<div class="sb-label">เมนูรายงาน</div>', unsafe_allow_html=True)
 sheet_selection = st.sidebar.radio(
     "เลือกชีต:",
-    [
-        "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
-        "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
-    ],
+    NAV,
+    format_func=lambda s: f"{NAV_ICON[s]}  {s}",
+    label_visibility="collapsed",
 )
-st.sidebar.markdown("---")
 
+st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
 # แยกตัวเลือกวันที่ของแต่ละชีตให้อิสระจากกันอย่างชัดเจน
 if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
     morning_date = st.sidebar.date_input(
@@ -386,8 +449,9 @@ else:
         key="h_date_input",
     )
 
-st.sidebar.markdown("---")
-st.sidebar.header("📥 Import ไฟล์รายงานระบบ")
+st.sidebar.markdown(
+    '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
+)
 uploaded_rp01 = st.sidebar.file_uploader(
     "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
 )
@@ -397,6 +461,11 @@ uploaded_rp03 = st.sidebar.file_uploader(
 uploaded_rp42 = st.sidebar.file_uploader(
     "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
 )
+_chips = "".join(
+    f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
+    for n, f in (("RP01", uploaded_rp01), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
+)
+st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
 st.markdown(
     '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
@@ -660,4 +729,3 @@ else:
             hist_not_billed = st.number_input(
                 "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
             )
-
