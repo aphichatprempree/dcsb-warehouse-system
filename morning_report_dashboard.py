@@ -5,7 +5,7 @@ import streamlit as st
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
 st.set_page_config(
     page_title="DCSB Warehouse Morning Report",
-    page_icon="🌿",
+    page_icon="📦",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -97,7 +97,8 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.45rem; }
 [data-testid="stSidebar"] hr { display:none; }
 .sb-brand { display:flex; align-items:center; gap:12px; padding:4px 6px 14px; margin-bottom:8px; border-bottom:2px solid var(--line); }
-.sb-logo { width:42px; height:42px; border-radius:14px; display:grid; place-items:center; font-size:1.2rem; background:var(--grad); box-shadow:0 8px 16px rgba(58,61,255,.3); flex:none; }
+.sb-logo { width:46px; height:46px; border-radius:15px; display:grid; place-items:center; flex:none; background:linear-gradient(145deg,#4a4dff,#2e8bff); border:2px solid #2a2cc9; box-shadow:0 8px 16px rgba(58,61,255,.35), inset 2px 2px 4px rgba(255,255,255,.35), inset -3px -3px 6px rgba(20,30,160,.35); }
+.sb-logo svg { width:27px; height:27px; display:block; filter:drop-shadow(0 2px 2px rgba(20,30,160,.4)); }
 .sb-name { color:var(--ink); font-weight:700; font-size:1rem; line-height:1.2; }
 .sb-sub { color:var(--muted); font-size:.68rem; letter-spacing:.08em; }
 .sb-label { color:var(--muted); font-size:.72rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; margin:14px 4px 0; padding-bottom:.5rem; }
@@ -334,7 +335,7 @@ NAV = [
 NAV_ICON = {NAV[0]: "🕘", NAV[1]: "🌅"}
 
 st.sidebar.markdown(
-    '<div class="sb-brand"><div class="sb-logo">🌿</div><div>'
+    '<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div>'
     '<div class="sb-name">DCSB Warehouse</div>'
     '<div class="sb-sub">REPORT SYSTEM</div></div></div>',
     unsafe_allow_html=True,
