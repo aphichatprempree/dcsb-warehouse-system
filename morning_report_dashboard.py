@@ -10,13 +10,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ชุดสีรุ้งตามตัวอย่าง (ส้ม > ชมพู > ม่วง > ฟ้า > เขียวมิ้นต์ > เขียวอ่อน > เหลือง > น้ำเงิน)
+# ชุดสีโทนน้ำเงิน-เทาฟ้า ตามธีม Soft UI
 RAINBOW = [
-    "#0b8178", "#d69a35", "#4788a6", "#b95d68",
-    "#65a98c", "#6078a8", "#9a7eae", "#8b9b57",
+    "#3a3dff", "#2e8bff", "#7b6cff", "#8d9bb3",
+    "#27b3d6", "#5b6b8c", "#9aa8ff", "#b4bfd0",
 ]
-INK = "#2f3b42"
-MUTED = "#7b8991"
+INK = "#2d3650"
+MUTED = "#8590a6"
 FONT = "IBM Plex Sans Thai, sans-serif"
 
 st.markdown(
@@ -24,109 +24,106 @@ st.markdown(
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
 :root {
-    --ink: #172b35; --muted: #71828a; --line: #e3eaec;
-    --teal: #087e78; --teal-dark: #075f5b; --amber: #d18a22;
-    --rose: #c94f62; --canvas: #f3f7f6; --card: #ffffff;
+    --ink:#2d3650; --muted:#8590a6; --bg:#e4e9f1; --bg2:#eef2f8;
+    --blue:#3a3dff; --blue2:#2e8bff; --rose:#e0536a;
+    --sh: 8px 8px 18px rgba(163,177,198,.55), -8px -8px 18px rgba(255,255,255,.95);
+    --sh-sm: 5px 5px 11px rgba(163,177,198,.5), -5px -5px 11px rgba(255,255,255,.95);
+    --sh-in: inset 4px 4px 9px rgba(163,177,198,.45), inset -4px -4px 9px rgba(255,255,255,.9);
+    --grad: linear-gradient(135deg,#3a3dff,#2e8bff);
 }
 html, body, [class*="css"], [data-testid="stAppViewContainer"] { font-family:'IBM Plex Sans Thai',sans-serif; color:var(--ink); }
-[data-testid="stAppViewContainer"] { background: radial-gradient(ellipse at 12% 0%, rgba(8,126,120,.08), transparent 34%), linear-gradient(145deg,#f6f8f7,#edf3f2); }
-[data-testid="stHeader"] { background:rgba(243,247,246,.78); }
-[data-testid="stSidebar"] { background:linear-gradient(180deg,#e9f1ef,#f4f7f6); border-right:1px solid #dce7e4; }
-[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3 { color:var(--ink); }
-.block-container { padding-top:1.35rem; padding-bottom:2.5rem; max-width:1600px; }
-h1,h2,h3 { color:var(--ink); letter-spacing:-.025em; }
-[data-testid="stVerticalBlock"] { gap:.7rem; }
-.hero { position:relative; overflow:hidden; background:linear-gradient(115deg,#123a42 0%,#0a6865 58%,#16847b 100%); border:1px solid rgba(255,255,255,.18); border-radius:24px; padding:25px 30px 22px; text-align:center; box-shadow:0 18px 40px rgba(16,65,67,.18), inset 0 1px 0 rgba(255,255,255,.16); margin:0 auto 6px; max-width:1120px; color:white; }
-.hero::before,.hero::after { content:""; position:absolute; border-radius:50%; pointer-events:none; }
-.hero::before { width:280px;height:280px;right:-80px;top:-160px;background:rgba(255,255,255,.09); }
-.hero::after { width:180px;height:180px;left:-65px;bottom:-130px;background:rgba(240,181,86,.18); }
-.hero-kicker { color:#b9ded7;font-size:.74rem;font-weight:600;letter-spacing:.18em; }
-.hero-title { color:white;font-size:1.85rem;font-weight:700;margin:5px 0 2px; }
-.hero-subtitle { color:#d8ece7;font-size:.92rem; }
-.hero-bar { height:3px;border-radius:3px;margin:14px auto 0;max-width:250px;background:linear-gradient(90deg,#e7b255,#f4d493,#73c8b2); }
-.page-sub { text-align:center;color:var(--muted);font-size:.78rem;letter-spacing:.12em;margin:6px 0 12px;text-transform:uppercase; }
-.section-title { display:flex;align-items:center;gap:11px;color:var(--ink);font-size:1.12rem;font-weight:700;margin:12px 0 3px; }
-.section-title::before { content:"";width:4px;height:23px;border-radius:4px;background:linear-gradient(180deg,#11a092,#d8a13c);box-shadow:0 2px 8px rgba(8,126,120,.23); }
-.focus-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:8px 0 2px; }
-.focus-card { background:linear-gradient(135deg,#fff 0%,#f8fbfa 100%);border:1px solid #e0eae7;border-radius:20px;padding:19px 24px 17px 28px;box-shadow:0 10px 26px rgba(31,67,69,.08),inset 0 1px 0 #fff;position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease; }
-.focus-card:hover { transform:translateY(-2px);box-shadow:0 15px 32px rgba(31,67,69,.13); }
-.focus-card::before { content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#12a391,#087e78); }
-.focus-card.alert::before { background:linear-gradient(180deg,#e6ad48,#cb5967); }
-.focus-label { font-size:.88rem;font-weight:600;color:var(--muted); }
-.focus-value { font-size:2.65rem;font-weight:700;color:var(--teal-dark);line-height:1.2;margin:8px 0 2px;font-variant-numeric:tabular-nums; }
+[data-testid="stAppViewContainer"] { background: linear-gradient(145deg,#e9eef5,#dde4ee); }
+[data-testid="stHeader"] { background:transparent; height:2.2rem; }
+[data-testid="stToolbar"], [data-testid="stDecoration"], footer { display:none !important; }
+.block-container { padding:.6rem 1.4rem 1rem; max-width:1700px; }
+h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
+[data-testid="stVerticalBlock"] { gap:.55rem; }
+
+/* ---------- HERO ---------- */
+.hero { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:26px; padding:14px 26px 12px; text-align:center; box-shadow:var(--sh); margin:0 auto 4px; max-width:1000px; }
+.hero-kicker { color:var(--blue2); font-size:.68rem; font-weight:600; letter-spacing:.2em; }
+.hero-title { color:var(--ink); font-size:1.5rem; font-weight:700; margin:2px 0 0; }
+.hero-subtitle { color:var(--muted); font-size:.82rem; }
+.hero-bar { height:4px; border-radius:4px; margin:9px auto 0; max-width:200px; background:var(--grad); box-shadow:0 3px 8px rgba(58,61,255,.3); }
+.page-sub { display:none; }
+.section-title { display:flex; align-items:center; gap:10px; color:var(--ink); font-size:1rem; font-weight:700; margin:6px 0 0; }
+.section-title::before { content:""; width:5px; height:20px; border-radius:5px; background:var(--grad); box-shadow:0 2px 7px rgba(58,61,255,.3); }
+
+/* ---------- FOCUS CARDS ---------- */
+.focus-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:4px 0 2px; }
+.focus-card { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:24px; padding:13px 22px 11px 26px; box-shadow:var(--sh); position:relative; overflow:hidden; }
+.focus-card::before { content:""; position:absolute; left:0; top:16px; bottom:16px; width:5px; border-radius:0 5px 5px 0; background:var(--grad); }
+.focus-card.alert::before { background:linear-gradient(180deg,#ffb35c,#e0536a); }
+.focus-label { font-size:.82rem; font-weight:600; color:var(--muted); }
+.focus-value { font-size:2.1rem; font-weight:700; color:var(--blue); line-height:1.15; margin:4px 0 0; font-variant-numeric:tabular-nums; }
 .focus-card.alert .focus-value { color:var(--rose); }
-.focus-value span { font-size:1.05rem;font-weight:600;color:var(--muted); }
-.focus-unit { font-size:.8rem;color:var(--muted);font-weight:500; }
-.report-wrap { background:#fff;border:1px solid #e0e9e7;border-radius:20px;overflow:hidden;box-shadow:0 12px 28px rgba(31,67,69,.08);margin:0; }
-.report-head { background:linear-gradient(110deg,#f9fbfa,#edf4f2);color:var(--ink);text-align:left;padding:15px 20px 13px;font-size:1rem;font-weight:700;border-bottom:1px solid #e4ecea; }
-.report-date { font-size:.78rem;font-weight:500;color:var(--muted);margin-left:5px; }
-.report-grid { display:grid;gap:0; }
-.report-cell { border-right:1px solid #edf1f0;border-bottom:1px solid #edf1f0;padding:12px 9px 10px;text-align:center;background:#fff;min-height:88px;box-sizing:border-box;transition:background .15s ease; }
-.report-cell:hover { background:#f7fbfa; }
-.report-label { color:var(--muted);font-size:.68rem;line-height:1.4;min-height:34px;font-weight:500; }
-.report-value { color:var(--ink);font-size:1.32rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums; }
+.focus-value span { font-size:.95rem; font-weight:600; color:var(--muted); }
+.focus-unit { font-size:.74rem; color:var(--muted); font-weight:500; }
+
+/* ---------- REPORT TABLE ---------- */
+.report-wrap { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:24px; overflow:hidden; box-shadow:var(--sh); padding:6px 8px 10px; }
+.report-head { color:var(--ink); text-align:left; padding:8px 14px 8px; font-size:.92rem; font-weight:700; }
+.report-date { font-size:.74rem; font-weight:500; color:var(--muted); margin-left:5px; }
+.report-grid { display:grid; gap:9px; padding:0 6px; }
+.report-cell { border-radius:16px; padding:8px 6px 7px; text-align:center; background:#e9eef5; box-shadow:var(--sh-sm); min-height:60px; box-sizing:border-box; }
+.report-label { color:var(--muted); font-size:.64rem; line-height:1.3; min-height:28px; font-weight:500; }
+.report-value { color:var(--ink); font-size:1.15rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
 .report-value.alert { color:var(--rose); }
-[class*="st-key-card"] { background:linear-gradient(160deg,#fff 0%,#f9fbfa 100%);border:1px solid #e1eae8;border-radius:22px;box-shadow:0 12px 30px rgba(31,67,69,.08),inset 0 1px 0 #fff;padding:.62rem .72rem .35rem; }
-.chart-title { color:var(--ink);font-size:1rem;font-weight:700;margin:0 0 4px;text-align:center; }
-.chart-sub { color:var(--muted);font-size:.76rem;text-align:center;margin-bottom:6px; }
-@media (max-width:1200px) { .report-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }.focus-grid { grid-template-columns:1fr; } }
-@media (max-width:700px) { .hero {padding:16px 14px;border-radius:18px}.hero-title{font-size:1.4rem}.report-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.focus-value{font-size:2.1rem} }
-[data-testid="stNumberInput"] > label { font-size:.84rem;font-weight:600;color:#50636a; }
-[data-testid="stNumberInput"] input { border-radius:11px;border-color:#dce7e4;background:white; }
-[data-testid="stNumberInput"] input:focus { border-color:var(--teal);box-shadow:0 0 0 1px var(--teal); }
-.stButton > button { background:linear-gradient(135deg,#0c837b,#075f5b);color:white;border:0;border-radius:11px;font-weight:600;padding:.58rem 1rem;box-shadow:0 5px 12px rgba(8,126,120,.18); }
-.stButton > button:hover { background:#0a6e68;color:white;box-shadow:0 7px 16px rgba(8,126,120,.24); }
-/* ================= SIDEBAR (dark, pill menu) ================= */
-[data-testid="stSidebar"] { background:linear-gradient(185deg,#10303a 0%,#0e2630 55%,#0a1c24 100%); border-right:0; box-shadow:6px 0 30px rgba(10,28,36,.18); }
-[data-testid="stSidebarContent"] { padding:0 1rem 1.2rem; }
-[data-testid="stSidebarHeader"] { position:absolute; top:.5rem; right:.5rem; z-index:5; height:auto; padding:0; width:auto; background:transparent; }
-[data-testid="stSidebarUserContent"] { padding-top:1.3rem; }
-[data-testid="stSidebarHeader"] button, [data-testid="stSidebarCollapseButton"] button { color:#b4d2cd; }
-[data-testid="stSidebarHeader"] button:hover { background:rgba(255,255,255,.08); color:white; }
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.55rem; }
+
+/* ---------- CHART CARDS ---------- */
+[class*="st-key-card"] { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:26px; box-shadow:var(--sh); padding:.5rem .6rem .2rem; border:0; }
+.chart-title { color:var(--ink); font-size:.92rem; font-weight:700; margin:0 0 2px; text-align:center; }
+.chart-sub { color:var(--muted); font-size:.7rem; text-align:center; margin-bottom:2px; }
+@media (max-width:1200px) { .report-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } .focus-grid { grid-template-columns:1fr; } }
+@media (max-width:700px) { .hero-title{font-size:1.25rem} .report-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} .focus-value{font-size:1.8rem} }
+
+/* ---------- EXPANDER + INPUTS ---------- */
+[data-testid="stExpander"] { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border:0 !important; border-radius:22px; box-shadow:var(--sh-sm); }
+[data-testid="stExpander"] summary p { font-weight:700; color:var(--ink); }
+[data-testid="stNumberInput"] > label p { font-size:.8rem; font-weight:600; color:#56627d; }
+[data-testid="stNumberInput"] [data-baseweb="input"], [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#e6ebf3 !important; border:0 !important; border-radius:12px; box-shadow:var(--sh-in); }
+[data-testid="stNumberInput"] input { color:var(--ink); background:transparent !important; }
+[data-testid="stNumberInput"] button { background:transparent; color:var(--blue); }
+.stButton > button { background:var(--grad); color:#fff; border:0; border-radius:14px; font-weight:600; padding:.55rem 1.1rem; box-shadow:0 8px 16px rgba(58,61,255,.28); }
+.stButton > button:hover { color:#fff; filter:brightness(1.07); }
+
+/* ---------- SIDEBAR (soft light) ---------- */
+[data-testid="stSidebar"] { background:linear-gradient(185deg,#eaeff6,#dde4ee); border-right:0; box-shadow:8px 0 24px rgba(163,177,198,.35); }
+[data-testid="stSidebarContent"] { padding:0 1rem 1rem; }
+[data-testid="stSidebarHeader"] { position:absolute; top:.4rem; right:.4rem; z-index:5; height:auto; padding:0; width:auto; background:transparent; }
+[data-testid="stSidebarHeader"] button { color:var(--muted); }
+[data-testid="stSidebarUserContent"] { padding-top:1rem; }
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.45rem; }
 [data-testid="stSidebar"] hr { display:none; }
-.sb-brand { display:flex; align-items:center; gap:12px; padding:2px 4px 14px; border-bottom:1px solid rgba(255,255,255,.09); margin-bottom:6px; }
-.sb-logo { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:1.2rem; background:linear-gradient(135deg,#2fd0a8,#0b8178); box-shadow:0 6px 14px rgba(15,160,140,.35); flex:none; }
-.sb-name { color:#fff; font-weight:700; font-size:1.02rem; line-height:1.2; }
-.sb-sub { color:#7fa6a1; font-size:.7rem; letter-spacing:.06em; }
-.sb-label { color:#7fa9a5; font-size:.74rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; line-height:1.7; margin:14px 4px 0; padding-bottom:.6rem; }
-/* radio -> pill menu (รองรับ Streamlit ทั้งรุ่นใหม่และรุ่นเก่า) */
-[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] { gap:.45rem; }
+.sb-brand { display:flex; align-items:center; gap:12px; padding:4px 6px 12px; margin-bottom:4px; }
+.sb-logo { width:42px; height:42px; border-radius:14px; display:grid; place-items:center; font-size:1.2rem; background:var(--grad); box-shadow:0 8px 16px rgba(58,61,255,.3); flex:none; }
+.sb-name { color:var(--ink); font-weight:700; font-size:1rem; line-height:1.2; }
+.sb-sub { color:var(--muted); font-size:.68rem; letter-spacing:.08em; }
+.sb-label { color:var(--muted); font-size:.72rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase; margin:10px 4px 0; padding-bottom:.35rem; }
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] { gap:.5rem; }
 [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > div { width:100%; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { width:100%; margin:0; padding:.7rem .75rem; border-radius:14px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.06); transition:all .16s ease; cursor:pointer; box-sizing:border-box; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { width:100%; margin:0; padding:.65rem .8rem; border-radius:16px; background:#e8edf4; box-shadow:var(--sh-sm); border:0; transition:all .16s ease; cursor:pointer; box-sizing:border-box; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child,
 [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] > div:first-child { display:none; }
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:hover { background:rgba(255,255,255,.10); }
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"] p,
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] p { color:#aecac6; font-weight:600; font-size:.78rem; line-height:1.4; margin:0; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label p { color:#56627d; font-weight:600; font-size:.78rem; line-height:1.4; margin:0; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(120deg,#35c9a0,#0f9a8c); border-color:transparent; box-shadow:0 8px 18px rgba(32,190,160,.30); }
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked) p,
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p { color:#fff; }
-/* inputs */
-[data-testid="stSidebar"] label p, [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { color:#a9c4c0; font-size:.8rem; font-weight:500; }
-[data-testid="stSidebar"] [data-baseweb="input"], [data-testid="stSidebar"] [data-baseweb="base-input"] { background:rgba(255,255,255,.07) !important; border-radius:12px; border:1px solid rgba(255,255,255,.10); }
-[data-testid="stSidebar"] [data-baseweb="input"] input { color:#fff !important; -webkit-text-fill-color:#fff; background:transparent !important; }
-[data-testid="stSidebar"] [data-baseweb="input"]:focus-within { border-color:#35c9a0; }
-[data-testid="stSidebar"] [data-testid="stDateInputField"] { background:rgba(255,255,255,.07) !important; border:1px solid rgba(255,255,255,.12) !important; border-radius:12px; }
-[data-testid="stSidebar"] [data-testid="stDateInputField"] * { color:#fff !important; -webkit-text-fill-color:#fff; }
-[data-testid="stSidebar"] [data-testid="stDateInputField"] svg { fill:#9fd6c9; }
-[data-testid="stSidebar"] [data-testid="stDateInputField"]:focus-within { border-color:#35c9a0 !important; }
-/* file uploader */
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:rgba(255,255,255,.05); border:1px dashed rgba(255,255,255,.22); border-radius:12px; padding:.6rem .7rem; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * { color:#a9c4c0; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small, [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] span { font-size:.68rem !important; line-height:1.3; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { display:flex; flex-direction:column; align-items:flex-start; gap:.4rem; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { font-size:.78rem; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { background:rgba(255,255,255,.10); border:0; border-radius:9px; color:#fff; padding:.25rem .7rem; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover { background:#35c9a0; color:#0a1c24; }
-[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * { color:#d5e8e5; }
-/* footer chips */
-.sb-foot { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.09); }
-.sb-chip { font-size:.7rem; font-weight:600; padding:5px 12px; border-radius:999px; background:rgba(255,255,255,.07); color:#7fa6a1; }
-.sb-chip.on { background:#35c9a0; color:#073b34; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:var(--grad); box-shadow:0 9px 18px rgba(58,61,255,.3); }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#fff; }
+[data-testid="stSidebar"] label p, [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { color:#56627d; font-size:.78rem; font-weight:500; }
+[data-testid="stSidebar"] [data-baseweb="input"], [data-testid="stSidebar"] [data-baseweb="base-input"] { background:#e6ebf3 !important; border-radius:12px; border:0 !important; box-shadow:var(--sh-in); }
+[data-testid="stSidebar"] [data-baseweb="input"] input { color:var(--ink) !important; -webkit-text-fill-color:var(--ink); background:transparent !important; }
+[data-testid="stSidebar"] [data-testid="stDateInputField"] { background:#e6ebf3 !important; border:0 !important; border-radius:12px; box-shadow:var(--sh-in); }
+[data-testid="stSidebar"] [data-testid="stDateInputField"] * { color:var(--ink) !important; -webkit-text-fill-color:var(--ink); }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:#e6ebf3; border:0; border-radius:14px; box-shadow:var(--sh-in); padding:.5rem .7rem; display:flex; flex-direction:column; align-items:flex-start; gap:.3rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * { color:#6a7690; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small, [data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] span { font-size:.66rem !important; line-height:1.3; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { font-size:.76rem; background:var(--grad); border:0; border-radius:10px; color:#fff; padding:.22rem .7rem; box-shadow:0 5px 10px rgba(58,61,255,.25); }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button * { color:#fff; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * { color:var(--ink); }
+.sb-foot { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:10px; padding-top:10px; }
+.sb-chip { font-size:.7rem; font-weight:600; padding:5px 13px; border-radius:999px; background:#e8edf4; box-shadow:var(--sh-sm); color:var(--muted); }
+.sb-chip.on { background:var(--grad); color:#fff; box-shadow:0 5px 12px rgba(58,61,255,.3); }
 </style>
 
 """,
@@ -135,14 +132,14 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.025em; }
 
 
 # =========================================================================
-# ฟังก์ชันวาดกราฟตามตัวอย่าง
+# ฟังก์ชันวาดกราฟ
 # =========================================================================
 def _pct(value, base):
     return (value / base * 100) if base and base > 0 else 0.0
 
 
-def radial_chart(labels, values, base=None, height=340):
-    """กราฟพัดครึ่งวงกลมสีรุ้ง (ตามตัวอย่างที่ 1) + ฟองเปอร์เซ็นต์ครึ่งซ้าย"""
+def radial_chart(labels, values, base=None, height=270):
+    """กราฟพัดครึ่งวงกลม + ฟองเปอร์เซ็นต์ครึ่งซ้าย"""
     n = len(labels)
     base = base if base else sum(values)
     maxv = max(values) if max(values) > 0 else 1
@@ -151,107 +148,70 @@ def radial_chart(labels, values, base=None, height=340):
 
     fig = go.Figure()
 
-    # แผ่นครึ่งวงกลมซ้ายสีเทาอ่อน
     fig.add_trace(
         go.Barpolar(
-            r=[1.12],
-            theta=[180],
-            width=[180],
-            marker=dict(color="rgba(214,220,224,0.55)", line=dict(width=0)),
-            hoverinfo="skip",
-            showlegend=False,
+            r=[1.12], theta=[180], width=[180],
+            marker=dict(color="rgba(200,209,222,0.55)", line=dict(width=0)),
+            hoverinfo="skip", showlegend=False,
         )
     )
-    # วงแหวนจาง ๆ ตกแต่ง
     fig.add_trace(
         go.Barpolar(
-            r=[0.72],
-            theta=[180],
-            width=[180],
-            marker=dict(color="rgba(255,255,255,0.55)", line=dict(width=0)),
-            hoverinfo="skip",
-            showlegend=False,
+            r=[0.72], theta=[180], width=[180],
+            marker=dict(color="rgba(255,255,255,0.7)", line=dict(width=0)),
+            hoverinfo="skip", showlegend=False,
         )
     )
 
-    # กลีบพัดฝั่งขวา
     for i, (lb, v) in enumerate(zip(labels, values)):
         center = 90 - width * (i + 0.5)
         r = 0.6 + 0.4 * (v / maxv)
         fig.add_trace(
             go.Barpolar(
-                r=[r],
-                theta=[center],
-                width=[width],
-                name=lb,
-                marker=dict(color=colors[i], line=dict(color="white", width=2)),
+                r=[r], theta=[center], width=[width], name=lb,
+                marker=dict(color=colors[i], line=dict(color="#eef2f8", width=2)),
                 hovertemplate=f"{lb}<br>{v:,} Pallets<extra></extra>",
             )
         )
         fig.add_trace(
             go.Scatterpolar(
-                r=[r - 0.09],
-                theta=[center],
-                mode="text",
+                r=[r - 0.09], theta=[center], mode="text",
                 text=[f"{v:,}"],
-                textfont=dict(color="white", size=14, family=FONT),
-                hoverinfo="skip",
-                showlegend=False,
+                textfont=dict(color="white", size=13, family=FONT),
+                hoverinfo="skip", showlegend=False,
             )
         )
 
-    # ฟองเปอร์เซ็นต์ตามแนวโค้งด้านซ้าย
-    if n == 1:
-        angles = [180]
-    else:
-        angles = [100 + (160 / (n - 1)) * i for i in range(n)]
+    angles = [180] if n == 1 else [100 + (160 / (n - 1)) * i for i in range(n)]
     fig.add_trace(
         go.Scatterpolar(
-            r=[0.9] * n,
-            theta=angles,
-            mode="markers+text",
+            r=[0.9] * n, theta=angles, mode="markers+text",
             text=[f"{_pct(v, base):.0f}%" for v in values],
-            marker=dict(
-                size=46,
-                color="white",
-                line=dict(color=colors, width=3),
-            ),
-            textfont=dict(color=colors, size=12, family=FONT),
-            hovertext=labels,
-            hoverinfo="text",
-            showlegend=False,
+            marker=dict(size=42, color="white", line=dict(color=colors, width=3)),
+            textfont=dict(color=colors, size=11, family=FONT),
+            hovertext=labels, hoverinfo="text", showlegend=False,
         )
     )
 
     fig.update_layout(
         height=height,
-        margin=dict(t=10, b=10, l=10, r=10),
+        margin=dict(t=6, b=6, l=6, r=6),
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT, color=INK),
         polar=dict(
             bgcolor="rgba(0,0,0,0)",
             hole=0.16,
             radialaxis=dict(visible=False, range=[0, 1.12]),
-            angularaxis=dict(
-                visible=False, rotation=0, direction="counterclockwise"
-            ),
+            angularaxis=dict(visible=False, rotation=0, direction="counterclockwise"),
         ),
         legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12),
+            orientation="h", yanchor="top", y=-0.02, xanchor="center", x=0.5,
+            font=dict(size=11),
         ),
         annotations=[
             dict(
-                x=0.5,
-                y=0.5,
-                xref="paper",
-                yref="paper",
-                text="<b>REPORT</b>",
-                showarrow=False,
+                x=0.5, y=0.5, xref="paper", yref="paper",
+                text="<b>REPORT</b>", showarrow=False,
                 font=dict(size=10, color=MUTED),
             )
         ],
@@ -259,8 +219,8 @@ def radial_chart(labels, values, base=None, height=340):
     return fig
 
 
-def tube_chart(labels, values, base, height=390):
-    """กราฟหลอดแท่งเงา + เส้นประเปอร์เซ็นต์ด้านบน (ตามตัวอย่างที่ 2)"""
+def tube_chart(labels, values, base, height=300):
+    """กราฟหลอดแท่งเงา + เส้นประเปอร์เซ็นต์ด้านบน"""
     n = len(labels)
     colors = [RAINBOW[i % len(RAINBOW)] for i in range(n)]
     xs = list(range(n))
@@ -270,119 +230,71 @@ def tube_chart(labels, values, base, height=390):
 
     fig = go.Figure()
 
-    # หลอดแก้วด้านหลัง
     fig.add_trace(
         go.Bar(
-            x=xs,
-            y=[bg_max] * n,
-            width=0.68,
-            marker=dict(
-                color="rgba(255,255,255,0.95)",
-                line=dict(color="#b7c4ca", width=3),
-            ),
-            hoverinfo="skip",
-            showlegend=False,
+            x=xs, y=[bg_max] * n, width=0.68,
+            marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#c5cedb", width=3)),
+            hoverinfo="skip", showlegend=False,
         )
     )
-    # แท่งสีด้านใน
     fig.add_trace(
         go.Bar(
-            x=xs,
-            y=values,
-            width=0.52,
+            x=xs, y=values, width=0.52,
             marker=dict(color=colors, line=dict(color="rgba(255,255,255,.7)", width=1)),
             text=[f"{v:,}" for v in values],
-            textposition="inside",
-            insidetextanchor="middle",
-            textangle=-90,
-            textfont=dict(color="white", size=14, family=FONT),
+            textposition="inside", insidetextanchor="middle", textangle=-90,
+            textfont=dict(color="white", size=13, family=FONT),
             customdata=[[lb, p] for lb, p in zip(labels, pcts)],
             hovertemplate="%{customdata[0]}<br>%{y:,} Pallets (%{customdata[1]:.1f}%)<extra></extra>",
             showlegend=False,
         )
     )
-    # แถบเงาสะท้อน
     fig.add_trace(
         go.Bar(
-            x=[x - 0.17 for x in xs],
-            y=[v * 0.95 for v in values],
-            width=0.07,
+            x=[x - 0.17 for x in xs], y=[v * 0.95 for v in values], width=0.07,
             marker=dict(color="rgba(255,255,255,0.38)", line=dict(width=0)),
-            hoverinfo="skip",
-            showlegend=False,
+            hoverinfo="skip", showlegend=False,
         )
     )
 
-    # เส้นประแสดงเปอร์เซ็นต์ (แกน y2 อยู่ด้านบน)
     fig.add_trace(
         go.Scatter(
-            x=xs,
-            y=pcts,
-            yaxis="y2",
-            mode="lines+markers",
-            line=dict(color="#4b5860", width=2, dash="dash"),
-            marker=dict(
-                size=13, symbol="square", color=colors,
-                line=dict(color="white", width=2),
-            ),
-            hovertemplate="%{y:.1f}%<extra></extra>",
-            showlegend=False,
+            x=xs, y=pcts, yaxis="y2", mode="lines+markers",
+            line=dict(color="#5b6b8c", width=2, dash="dash"),
+            marker=dict(size=12, symbol="square", color=colors, line=dict(color="white", width=2)),
+            hovertemplate="%{y:.1f}%<extra></extra>", showlegend=False,
         )
     )
     lo, hi = min(pcts), max(pcts)
     span = max(hi - lo, 10)
     annotations = [
         dict(
-            x=x,
-            y=p,
-            xref="x",
-            yref="y2",
-            text=f"<b>{p:.0f}%</b>",
-            showarrow=False,
-            yshift=26,
-            bgcolor="white",
-            bordercolor="#9fb0b8",
-            borderwidth=1,
-            borderpad=3,
-            font=dict(size=12, color=INK, family=FONT),
+            x=x, y=p, xref="x", yref="y2", text=f"<b>{p:.0f}%</b>",
+            showarrow=False, yshift=24, bgcolor="white",
+            bordercolor="#b7c2d4", borderwidth=1, borderpad=3,
+            font=dict(size=11, color=INK, family=FONT),
         )
         for x, p in zip(xs, pcts)
     ]
 
     fig.update_layout(
-        height=height,
-        barmode="overlay",
-        margin=dict(t=20, b=20, l=20, r=20),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT, color=INK),
-        showlegend=False,
+        height=height, barmode="overlay",
+        margin=dict(t=14, b=14, l=14, r=14),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT, color=INK), showlegend=False,
         annotations=annotations,
         xaxis=dict(
-            tickmode="array",
-            tickvals=xs,
+            tickmode="array", tickvals=xs,
             ticktext=[lb.replace(" ", "<br>", 1) if len(lb) > 12 else lb for lb in labels],
-            tickfont=dict(size=12),
-            range=[-0.6, n - 0.4],
-            showgrid=False,
-            zeroline=False,
+            tickfont=dict(size=11), range=[-0.6, n - 0.4],
+            showgrid=False, zeroline=False,
         ),
-        yaxis=dict(
-            domain=[0, 0.64],
-            range=[0, bg_max],
-            showgrid=False,
-            showticklabels=False,
-            zeroline=False,
-        ),
+        yaxis=dict(domain=[0, 0.64], range=[0, bg_max], showgrid=False, showticklabels=False, zeroline=False),
         yaxis2=dict(
-            domain=[0.76, 1],
-            range=[lo - span * 0.6, hi + span * 0.7],
-            showgrid=False,
-            showticklabels=False,
-            zeroline=False,
+            domain=[0.76, 1], range=[lo - span * 0.6, hi + span * 0.7],
+            showgrid=False, showticklabels=False, zeroline=False,
         ),
     )
-    # มุมโค้งของหลอด (รองรับใน Plotly รุ่นใหม่)
     try:
         fig.update_traces(marker_cornerradius=18, selector=dict(type="bar"))
     except Exception:
@@ -435,7 +347,6 @@ sheet_selection = st.sidebar.radio(
 )
 
 st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-# แยกตัวเลือกวันที่ของแต่ละชีตให้อิสระจากกันอย่างชัดเจน
 if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
     morning_date = st.sidebar.date_input(
         "ประจำวันที่ (กะเช้าปัจจุบัน)",
@@ -471,8 +382,7 @@ st.markdown(
     '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
     '<div class="hero-title">📊 รายงานการรับสินค้าประจำวัน</div>'
     '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
-    '<div class="hero-bar"></div></div>'
-    '<div class="page-sub">Daily receiving summary dashboard</div>',
+    '<div class="hero-bar"></div></div>',
     unsafe_allow_html=True,
 )
 
@@ -576,11 +486,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                 use_container_width=True,
             )
 
-    st.markdown(
-        '<div class="section-title">✏️ ปรับปรุงข้อมูลรายงานประจำวัน</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(key="card_edit"):
+    with st.expander("✏️ ปรับปรุงข้อมูลรายงานประจำวัน", expanded=False):
         col_a, col_b, col_c = st.columns(3, gap="small")
         with col_a:
             inv_all = st.number_input(
@@ -678,7 +584,7 @@ else:
                     ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับ"],
                     [hist_total_recv, hist_complete, hist_extra, hist_not_recv],
                     base=hist_total_recv,
-                    height=390,
+                    height=300,
                 ),
                 use_container_width=True,
             )
@@ -693,16 +599,12 @@ else:
                     ["ยังไม่ยื่นบิล", "ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
-                    height=390,
+                    height=300,
                 ),
                 use_container_width=True,
             )
 
-    st.markdown(
-        '<div class="section-title">✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(key="card_edit_hist"):
+    with st.expander("✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)", expanded=False):
         hc1, hc2, hc3, hc4 = st.columns(4, gap="small")
         with hc1:
             hist_inv = st.number_input(
