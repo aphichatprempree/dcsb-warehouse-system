@@ -620,31 +620,39 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 
-# Each report page has its own upload widgets. Clear that page's prior uploads
-# on entry so a new report day always starts with freshly selected files.
+# Keep both page-specific upload sections mounted so Streamlit preserves each
+# page's selected files while the user switches between reports.
 _page_id = "morning" if sheet_selection == NAV[1] else "history"
-_upload_keys = [f"{_page_id}_{name}" for name in ("rp01_1610", "rp01_2200", "rp03", "rp42")]
-if st.session_state.get("_last_report_page") != sheet_selection:
-    for _key in _upload_keys:
-        st.session_state.pop(_key, None)
-    st.session_state.pop(f"_last_import_signature_{_page_id}", None)
-    st.session_state["_last_report_page"] = sheet_selection
 
-st.sidebar.markdown(
-    '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
-)
-uploaded_rp01_1610 = st.sidebar.file_uploader(
-    "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{_page_id}_rp01_1610"
-)
-uploaded_rp01_2200 = st.sidebar.file_uploader(
-    "RP01 หลัง 22.00", type=["xlsx", "xls"], key=f"{_page_id}_rp01_2200"
-)
-uploaded_rp03 = st.sidebar.file_uploader(
-    "RP03 GRN", type=["xlsx", "xls"], key=f"{_page_id}_rp03"
-)
-uploaded_rp42 = st.sidebar.file_uploader(
-    "RP42 ASN Status", type=["xlsx", "xls"], key=f"{_page_id}_rp42"
-)
+
+def _render_upload_section(page_id, title, expanded):
+    with st.sidebar.expander(title, expanded=expanded):
+        return {
+            "rp01_1610": st.file_uploader(
+                "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
+            ),
+            "rp01_2200": st.file_uploader(
+                "RP01 หลัง 22.00", type=["xlsx", "xls"], key=f"{page_id}_rp01_2200"
+            ),
+            "rp03": st.file_uploader(
+                "RP03 GRN", type=["xlsx", "xls"], key=f"{page_id}_rp03"
+            ),
+            "rp42": st.file_uploader(
+                "RP42 ASN Status", type=["xlsx", "xls"], key=f"{page_id}_rp42"
+            ),
+        }
+
+
+st.sidebar.markdown('<div class="sb-label">Import ไฟล์แยกตามหน้า</div>', unsafe_allow_html=True)
+_page_uploads = {
+    "history": _render_upload_section("history", "🕘 รายงานย้อนหลัง", _page_id == "history"),
+    "morning": _render_upload_section("morning", "🌅 กะเช้าปัจจุบัน", _page_id == "morning"),
+}
+_active_uploads = _page_uploads[_page_id]
+uploaded_rp01_1610 = _active_uploads["rp01_1610"]
+uploaded_rp01_2200 = _active_uploads["rp01_2200"]
+uploaded_rp03 = _active_uploads["rp03"]
+uploaded_rp42 = _active_uploads["rp42"]
 _uploaded_files = {
     "rp01_1610": uploaded_rp01_1610,
     "rp01_2200": uploaded_rp01_2200,
@@ -676,14 +684,13 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
     )
     selected_morning_date = morning_date.strftime("%Y-%m-%d")
-    if st.session_state.get("_loaded_morning_date") != selected_morning_date:
-        record = _get_report_record(selected_morning_date, page="morning")
-        for field, default_value in MORNING_DEFAULTS.items():
-            value = record.get(field, default_value) if record else default_value
-            if isinstance(value, float) and value.is_integer():
-                value = int(value)
-            st.session_state[field] = value
-        st.session_state["_loaded_morning_date"] = selected_morning_date
+    record = _get_report_record(selected_morning_date, page="morning")
+    for field, default_value in MORNING_DEFAULTS.items():
+        value = record.get(field, default_value) if record else default_value
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        st.session_state[field] = value
+    st.session_state["_loaded_morning_date"] = selected_morning_date
     if _new_import and any(_uploads):
         for metric, value in imported.items():
             if metric in MORNING_DEFAULTS:
@@ -710,14 +717,13 @@ else:
         "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
     )
     selected_report_date = hist_date.strftime("%Y-%m-%d")
-    if st.session_state.get("_loaded_report_date") != selected_report_date:
-        record = _get_report_record(selected_report_date, page="history")
-        for field, default_value in REPORT_DEFAULTS.items():
-            value = record.get(field, default_value) if record else default_value
-            if isinstance(value, float) and value.is_integer():
-                value = int(value)
-            st.session_state[field] = value
-        st.session_state["_loaded_report_date"] = selected_report_date
+    record = _get_report_record(selected_report_date, page="history")
+    for field, default_value in REPORT_DEFAULTS.items():
+        value = record.get(field, default_value) if record else default_value
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        st.session_state[field] = value
+    st.session_state["_loaded_report_date"] = selected_report_date
     if _new_import:
         for metric, value in imported.items():
             if metric.startswith("hist_"):
@@ -727,7 +733,7 @@ else:
         _autosave_current_report()
         REPORT_STORE = _load_report_store()
         st.sidebar.success(f"นำเข้าและจำข้อมูลของวันที่ {selected_report_date} แล้ว")
-    elif REPORT_STORE.get("records", {}).get(selected_report_date):
+    elif record:
         st.sidebar.caption("โหลดข้อมูลล่าสุดของวันที่เลือกแล้ว · บันทึกอัตโนมัติ")
     else:
         st.sidebar.caption("ข้อมูลที่แก้ไขจะถูกจำไว้โดยอัตโนมัติ")
