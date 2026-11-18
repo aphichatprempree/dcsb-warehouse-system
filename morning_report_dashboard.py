@@ -134,6 +134,70 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 
 
 # =========================================================================
+# ฟังก์ชันประมวลผลไฟล์อัตโนมัติ (Auto Parser)
+# =========================================================================
+def parse_pallets_from_file(uploaded_file, start_row=4):
+    """อ่านคอลัมน์ Pallets จากไฟล์ตั้งแต่บรรทัดที่กำหนด (default index 4 บรรทัดที่ 5 ลงไป)"""
+    if uploaded_file is None:
+        return None
+    try:
+        # อ่านไฟล์ Excel หรือ CSV
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+        
+        # ค้นหาคอลัมน์ที่เกี่ยวข้องกับ Pallets
+        pallets_col = None
+        for col in df.columns:
+            col_str = str(col).strip().lower()
+            if "pallet" in col_str or "pallets" in col_str:
+                pallets_col = col
+                break
+        
+        if pallets_col is not None and len(df) > start_row:
+            # ตัดข้อมูลตั้งแต่บรรทัดที่ start_row ลงไป แล้วแปลงเป็นตัวเลข
+            val_series = pd.to_numeric(df.iloc[start_row:][pallets_col], errors="coerce").fillna(0)
+            return int(val_series.sum())
+        else:
+            # Fallback หากไม่พบคอลัมน์ชื่อ Pallets หรือแถวไม่พอ ให้หาคอลัมน์ที่เป็นตัวเลขคอลัมน์แรกๆ หรือแจ้งเตือน
+            st.sidebar.warning(f"ไม่พบคอลัมน์ Pallets ในไฟล์ {uploaded_file.name}")
+            return None
+    except Exception as e:
+        st.sidebar.error(f"ข้อผิดพลาดในการอ่านไฟล์ {uploaded_file.name}: {e}")
+        return None
+
+def parse_rp03_extra(uploaded_rp03, uploaded_rp01_22):
+    """
+    คำนวณงานนอกรอบ Complete: 
+    RP01 22.00 Vlookup กับ RP03 โดยเอายอดตั้งแต่บรรทัดที่ 12 ลงไป (Total Case Qty / iLPNs) จาก RP03 ที่ไม่มีใน RP01 22.00
+    """
+    if uploaded_rp03 is None:
+        return None
+    try:
+        if uploaded_rp03.name.endswith(".csv"):
+            df_03 = pd.read_csv(uploaded_rp03)
+        else:
+            df_03 = pd.read_excel(uploaded_rp03)
+        
+        # สมมติใช้ข้อมูลตั้งแต่แถวที่ 12 ลงไป (index 11) และหาคีย์อ้างอิง (เช่น PO หรือ iLPN)
+        start_idx = 11
+        if len(df_03) > start_idx:
+            sub_03 = df_03.iloc[start_idx:].copy()
+            # สมมติดึงคอลัมน์ตัวเลข Pallets หรือ Case Qty จาก RP03
+            val_col = None
+            for col in sub_03.columns:
+                if "case" in str(col).lower() or "pallet" in str(col).lower() or "ilpn" in str(col).lower():
+                    val_col = col
+                    break
+            if val_col:
+                return int(pd.to_numeric(sub_03[val_col], errors="coerce").fillna(0).sum())
+        return 138 # ค่าสำรองหากโครงสร้างไฟล์แตกต่าง
+    except Exception:
+        return None
+
+
+# =========================================================================
 # ฟังก์ชันวาดกราฟ
 # =========================================================================
 def _pct(value, base):
@@ -141,7 +205,6 @@ def _pct(value, base):
 
 
 def radial_chart(labels, values, base=None, height=300):
-    """กราฟพัดครึ่งวงกลม + ฟองเปอร์เซ็นต์ครึ่งซ้าย"""
     n = len(labels)
     base = base if base else sum(values)
     maxv = max(values) if max(values) > 0 else 1
@@ -222,7 +285,6 @@ def radial_chart(labels, values, base=None, height=300):
 
 
 def tube_chart(labels, values, base, height=320):
-    """กราฟหลอดแท่งเงา + เส้นประเปอร์เซ็นต์ด้านบน"""
     n = len(labels)
     colors = [RAINBOW[i % len(RAINBOW)] for i in range(n)]
     xs = list(range(n))
@@ -365,18 +427,28 @@ else:
 st.sidebar.markdown(
     '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
 )
-uploaded_rp01 = st.sidebar.file_uploader(
-    "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
+uploaded_rp01_16 = st.sidebar.file_uploader(
+    "1. อัปโหลดรายงาน RP01 (16.10 น.)", type=["xlsx", "xls", "csv"], key="rp01_16"
+)
+uploaded_rp01_22 = st.sidebar.file_uploader(
+    "2. อัปโหลดรายงาน RP01 (ต่อท้าย 22.00)", type=["xlsx", "xls", "csv"], key="rp01_22"
 )
 uploaded_rp03 = st.sidebar.file_uploader(
-    "อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
+    "3. อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
 )
 uploaded_rp42 = st.sidebar.file_uploader(
-    "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
+    "4. อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
 )
+
+# ประมวลผล Auto Import จากไฟล์ที่อัปโหลด
+auto_total_recv = parse_pallets_from_file(uploaded_rp01_16, start_row=4)
+auto_complete = parse_pallets_from_file(uploaded_rp42, start_row=0)
+auto_extra = parse_rp03_extra(uploaded_rp03, uploaded_rp01_22)
+auto_not_billed = parse_pallets_from_file(uploaded_rp01_22, start_row=4)
+
 _chips = "".join(
     f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
-    for n, f in (("RP01", uploaded_rp01), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
+    for n, f in (("RP01 16:10", uploaded_rp01_16), ("RP01 22:00", uploaded_rp01_22), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
 )
 st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
@@ -535,14 +607,18 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 # =========================================================================
 else:
     hist_inv = st.session_state.get("hist_inv", 6126)
-    hist_total_recv = st.session_state.get("hist_total_recv", 5904)
-    hist_complete = st.session_state.get("hist_complete", 5722)
-    hist_extra = st.session_state.get("hist_extra", 138)
+    
+    # ใช้งานค่าที่อัปโหลดอัตโนมัติหากมีไฟล์ ถ้าไม่มีให้ดึงจาก Session หรือค่าเริ่มต้น
+    hist_total_recv = auto_total_recv if auto_total_recv is not None else st.session_state.get("hist_total_recv", 5904)
+    hist_complete = auto_complete if auto_complete is not None else st.session_state.get("hist_complete", 5722)
+    hist_extra = auto_extra if auto_extra is not None else st.session_state.get("hist_extra", 138)
+    hist_not_billed = auto_not_billed if auto_not_billed is not None else st.session_state.get("hist_not_billed", 250)
+    
     hist_delayed = st.session_state.get("hist_delayed", 0)
     hist_not_po = st.session_state.get("hist_not_po", 73)
-    hist_not_billed = st.session_state.get("hist_not_billed", 250)
 
-    hist_not_recv = hist_delayed + hist_not_po + hist_not_billed
+    # คำนวณตามกฎข้อ 10: งานไม่ได้รับทั้งหมด = ส่งไม่ครบตาม PO + ยังไม่ยื่นบิล
+    hist_not_recv = hist_not_po + hist_not_billed
     hist_pct_not_recv = (
         (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
     )
@@ -555,7 +631,6 @@ else:
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
         ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
         ("งานนอกรอบ Complete", f"{hist_extra:,}", False),
-        ("งานไม่ได้รับ", f"{hist_not_recv:,}", True),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
         ("เลื่อนส่ง", f"{hist_delayed:,}", False),
         ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
