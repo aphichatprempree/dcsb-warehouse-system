@@ -780,19 +780,19 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 if sheet_selection == NAV[1]:
-    RAINBOW = ["#e84d91", "#8658d6", "#668ee8", "#f2a23c", "#38b6c5", "#ad70d8", "#ed7874", "#73b987"]
+    RAINBOW = ["#75cbb0", "#91d2af", "#b5d39a", "#d9d080", "#efc36e", "#efa75f", "#e98c72", "#b8c99a"]
     st.markdown(
         """
 <style>
 body:has(.morning-theme) {
-    --ink:#302d3d; --muted:#898596; --blue:#8052ce; --blue2:#9668dc;
-    --rose:#e84d91; --grad:linear-gradient(135deg,#e84d91,#8756d5);
-    --line:#ece9f2; --line-strong:#d9d3e5;
-    --sh:0 7px 20px rgba(54,40,83,.08);
-    --sh-sm:0 3px 10px rgba(54,40,83,.07);
-    --sh-in:inset 0 1px 3px rgba(54,40,83,.06);
+    --ink:#34473f; --muted:#7e8f85; --blue:#65ac91; --blue2:#89cdb1;
+    --rose:#dc806d; --grad:linear-gradient(120deg,#8bd6bb,#eebc62);
+    --line:#dcece3; --line-strong:#c7e2d3;
+    --sh:0 7px 20px rgba(68,121,96,.08);
+    --sh-sm:0 3px 10px rgba(68,121,96,.07);
+    --sh-in:inset 0 1px 3px rgba(68,121,96,.06);
 }
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#f8f8fb; }
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(135deg,#f3faf6,#fff8ed); }
 body:has(.morning-theme) .hero,
 body:has(.morning-theme) .focus-card,
 body:has(.morning-theme) .report-wrap,
@@ -801,13 +801,13 @@ body:has(.morning-theme) [data-testid="stExpander"] { background:#ffffff; }
 body:has(.morning-theme) .report-cell { background:#ffffff; }
 body:has(.morning-theme) [data-testid="stSidebar"] { background:#ffffff; border-right:1px solid #eeeaf4; box-shadow:4px 0 18px rgba(51,39,78,.05); }
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { border-color:#8052ce !important; box-shadow:0 5px 13px rgba(128,82,206,.2); }
-body:has(.morning-theme) .sb-brand { background:linear-gradient(135deg,#7445bd,#9856cf); border:0; border-radius:14px; padding:10px 9px; margin:0 -2px 8px; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { border-color:#98cfb4 !important; box-shadow:0 5px 13px rgba(107,172,139,.18); }
+body:has(.morning-theme) .sb-brand { background:linear-gradient(120deg,#83cfb2,#e8b35c); border:0; border-radius:14px; padding:10px 9px; margin:0 -2px 8px; }
 body:has(.morning-theme) .sb-name, body:has(.morning-theme) .sb-sub { color:#ffffff; }
 body:has(.morning-theme) .sb-logo { background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.35); box-shadow:none; }
 body:has(.morning-theme) .sb-label { color:#9b94a8; }
-body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(128,82,206,.22); }
-body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(128,82,206,.18); }
+body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(117,184,148,.22); }
+body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(117,184,148,.18); }
 body:has(.morning-theme) .report-wrap { border-width:1px; }
 body:has(.morning-theme) .report-cell { box-shadow:0 2px 8px rgba(54,40,83,.06); }
 body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
@@ -1058,7 +1058,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             report_values,
             6,
             compact=True,
-            accent_colors=["#df535d", "#e34e87", "#ed6b9d", "#ee806f", "#f08d50", "#f0a844", "#edc45d"],
+            accent_colors=["#79cbb0", "#97d0a8", "#b9d18e", "#d9cb74", "#edbd63", "#efa55e", "#e68c70"],
         ),
         unsafe_allow_html=True,
     )
