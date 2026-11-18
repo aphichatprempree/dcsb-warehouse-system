@@ -2,9 +2,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from io import BytesIO
-
-
 def _norm_key(value):
     if pd.isna(value):
         return ""
@@ -43,7 +40,9 @@ def _column(frame, name):
 def _sum_numeric(frame, name, mask=None):
     col = _column(frame, name)
     values = pd.to_numeric(frame[col], errors="coerce").fillna(0)
-    return float(values[mask].sum()) if mask is not None else float(values.sum())
+    total = values[mask].sum() if mask is not None else values.sum()
+    total = float(total)
+    return int(total) if total.is_integer() else total
 
 
 def _extra_complete(rp01_22, rp03):
