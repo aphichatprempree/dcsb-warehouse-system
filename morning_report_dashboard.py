@@ -1,4 +1,3 @@
-import re
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -132,195 +131,6 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 """,
     unsafe_allow_html=True,
 )
-
-
-# =========================================================================
-# ฟังก์ชันอ่านไฟล์และประมวลผลรายงาน (เฉพาะหน้า สรุปงานรับและงานค้างส่ง(ย้อนหลัง))
-# =========================================================================
-def _read_raw_file(uploaded_file):
-    """อ่านไฟล์ Excel หรือ CSV แบบไม่กำหนด Header เพื่อค้นหาตำแหน่งแถวที่แท้จริง"""
-    uploaded_file.seek(0)
-    name = uploaded_file.name.lower()
-    if name.endswith(".csv"):
-        try:
-            return pd.read_csv(uploaded_file, header=None, encoding="utf-8-sig")
-        except Exception:
-            uploaded_file.seek(0)
-            return pd.read_csv(uploaded_file, header=None, encoding="cp874")
-    return pd.read_excel(uploaded_file, header=None)
-
-
-def _clean_num(series):
-    """แปลงค่าคอลัมน์ตัวเลข (รองรับ comma และข้อความ)"""
-    return (
-        pd.to_numeric(
-            series.astype(str).str.replace(",", "", regex=False).str.strip(),
-            errors="coerce",
-        )
-        .fillna(0)
-    )
-
-
-def _find_header_and_df(raw_df, keywords, start_row_hint=None):
-    """ค้นหาแถว Header จากคำสำคัญ หรือใช้แถวเริ่มต้นที่ระบุ"""
-    header_idx = None
-    if start_row_hint is not None and start_row_hint < len(raw_df):
-        row_str = " ".join(raw_df.iloc[start_row_hint].fillna("").astype(str)).lower()
-        if any(kw.lower() in row_str for kw in keywords):
-            header_idx = start_row_hint
-
-    if header_idx is None:
-        for i in range(min(30, len(raw_df))):
-            row_str = " ".join(raw_df.iloc[i].fillna("").astype(str)).lower()
-            if any(kw.lower() in row_str for kw in keywords):
-                header_idx = i
-                break
-
-    if header_idx is None:
-        header_idx = start_row_hint if (start_row_hint is not None and start_row_hint < len(raw_df)) else 0
-
-    df = raw_df.iloc[header_idx + 1 :].copy()
-    df.columns = [
-        str(c).strip() if pd.notna(c) and str(c).strip() != "" else f"col_{idx}"
-        for idx, c in enumerate(raw_df.iloc[header_idx])
-    ]
-    df = df.dropna(how="all").reset_index(drop=True)
-    return df
-
-
-def _find_col(df, exact_candidates, partial_candidates):
-    """ค้นหาชื่อคอลัมน์ที่ตรงกับเงื่อนไข"""
-    cols_lower = {str(c).strip().lower(): c for c in df.columns}
-    for cand in exact_candidates:
-        if cand.lower() in cols_lower:
-            return cols_lower[cand.lower()]
-    for cand in partial_candidates:
-        for cl, orig in cols_lower.items():
-            if cand.lower() in cl:
-                return orig
-    return None
-
-
-def _drop_summary_rows(df, key_col=None):
-    """ตัดแถวผลรวม (Total / Grand Total / สรุป) ท้ายตารางออกเพื่อป้องกันการบวกซ้ำ"""
-    mask = pd.Series(False, index=df.index)
-    check_cols = [key_col] if key_col and key_col in df.columns else list(df.columns[:4])
-    for col in check_cols:
-        s = df[col].fillna("").astype(str).str.strip().str.lower()
-        mask |= s.str.contains(r"^(?:total|grand\s*total|sub\s*total|รวม|ยอดรวม|สรุป)", regex=True)
-    return df[~mask].copy()
-
-
-def parse_rp01_pallets(uploaded_file):
-    """ดึงยอด Pallets จากไฟล์ RP01 (ใช้ทั้งรอบ 16.10 น. และ 22.00 น.)"""
-    raw = _read_raw_file(uploaded_file)
-    df = _find_header_and_df(raw, ["pallet", "po", "asn", "vendor", "supplier"])
-    key_col = _find_col(df, ["po", "po no", "po_no", "asn", "asn no"], ["po", "asn", "vendor"])
-    df = _drop_summary_rows(df, key_col)
-    pallet_col = _find_col(
-        df,
-        ["pallets", "pallet", "total pallets", "pallet qty"],
-        ["pallet"],
-    )
-    if pallet_col is None:
-        raise ValueError(f"ไม่พบคอลัมน์ Pallets ในไฟล์ {uploaded_file.name}")
-    return int(round(_clean_num(df[pallet_col]).sum())), df
-
-
-def parse_rp42_verified_pallets(uploaded_file):
-    """ข้อ 3: ดึงยอด Pallets Verified จากไฟล์ RP42"""
-    raw = _read_raw_file(uploaded_file)
-    df = _find_header_and_df(raw, ["verified", "pallet", "po", "asn"])
-    key_col = _find_col(df, ["po", "po no", "asn", "asn no"], ["po", "asn"])
-    df = _drop_summary_rows(df, key_col)
-    ver_col = _find_col(
-        df,
-        ["pallets verified", "verified pallets", "pallet verified", "verified"],
-        ["verified"],
-    )
-    if ver_col is None:
-        ver_col = _find_col(df, ["pallets", "pallet"], ["pallet"])
-    if ver_col is None:
-        raise ValueError(f"ไม่พบคอลัมน์ Pallets Verified ในไฟล์ {uploaded_file.name}")
-    return int(round(_clean_num(df[ver_col]).sum()))
-
-
-def parse_rp03_extra_complete(rp03_file, rp01_22_df):
-    """
-    ข้อ 4: งานนอกรอบ Complete
-    นำ RP01 22.00 มา VLOOKUP กับ RP03 โดยดึงข้อมูลตั้งแต่บรรทัดที่ 12 ลงไป (index 11+)
-    รวมยอด Total Case Qty (iLPNs) จาก RP03 ที่ไม่มีอยู่ใน RP01 22.00
-    """
-    raw = _read_raw_file(rp03_file)
-    # บรรทัดที่ 12 ใน Excel คือ index 11: หากบรรทัดที่ 11 เป็น Header ให้ใช้ index 10 เป็น Header และข้อมูลเริ่ม index 11
-    row11_text = " ".join(raw.iloc[10].fillna("").astype(str)).lower() if len(raw) > 10 else ""
-    row12_text = " ".join(raw.iloc[11].fillna("").astype(str)).lower() if len(raw) > 11 else ""
-
-    if any(k in row11_text for k in ["case", "ilpn", "po", "asn"]):
-        header_idx = 10
-        data_start_idx = 11  # ข้อมูลเริ่มบรรทัดที่ 12 (1-based)
-    elif any(k in row12_text for k in ["case", "ilpn", "po", "asn"]):
-        header_idx = 11
-        data_start_idx = 12  # Header อยู่บรรทัดที่ 12 ข้อมูลเริ่มบรรทัดถัดไป
-    else:
-        # กรณีไม่มี Header ชัดเจน ให้ตัดเอาตั้งแต่บรรทัดที่ 12 ลงไปตรงๆ
-        header_idx = 10 if len(raw) > 10 else 0
-        data_start_idx = 11 if len(raw) > 11 else header_idx + 1
-
-    df_rp03 = raw.iloc[data_start_idx:].copy()
-    df_rp03.columns = [
-        str(c).strip() if pd.notna(c) and str(c).strip() != "" else f"col_{idx}"
-        for idx, c in enumerate(raw.iloc[header_idx])
-    ]
-    df_rp03 = df_rp03.dropna(how="all").reset_index(drop=True)
-
-    # ค้นหาคอลัมน์ Total Case Qty (iLPNs)
-    qty_col = _find_col(
-        df_rp03,
-        [
-            "total case qty (ilpns)",
-            "total case qty(ilpns)",
-            "total case qty",
-            "case qty (ilpns)",
-            "case qty",
-        ],
-        ["total case qty", "case qty", "ilpn"],
-    )
-    if qty_col is None:
-        raise ValueError(f"ไม่พบคอลัมน์ Total Case Qty (iLPNs) ในไฟล์ {rp03_file.name}")
-
-    # ค้นหาคอลัมน์ Key สำหรับทำ VLOOKUP ระหว่าง RP03 กับ RP01 (22.00)
-    key_candidates = [
-        "po", "po no", "po_no", "po number", "purchase order",
-        "ilpn", "ilpn no", "lpn", "asn", "asn no", "shipment", "doc no",
-    ]
-    rp03_key = _find_col(df_rp03, key_candidates, ["po", "ilpn", "lpn", "asn"])
-    rp01_key = _find_col(rp01_22_df, key_candidates, ["po", "ilpn", "lpn", "asn"])
-
-    df_rp03 = _drop_summary_rows(df_rp03, rp03_key)
-
-    if rp03_key is None or rp01_key is None:
-        raise ValueError(
-            "ไม่พบคอลัมน์อ้างอิง (เช่น PO / iLPN / ASN) ที่ตรงกันระหว่าง RP03 และ RP01 (22.00)"
-        )
-
-    def _norm_key(s):
-        return (
-            s.fillna("")
-            .astype(str)
-            .str.strip()
-            .str.replace(r"\.0$", "", regex=True)
-            .str.upper()
-        )
-
-    rp01_keys_set = set(_norm_key(rp01_22_df[rp01_key])) - {"", "NAN", "NONE"}
-    rp03_keys_series = _norm_key(df_rp03[rp03_key])
-
-    # เลือกเฉพาะรายการใน RP03 ที่ไม่มีใน RP01 (22.00) และมีรหัสอ้างอิง
-    not_in_rp01_mask = (~rp03_keys_series.isin(rp01_keys_set)) & (~rp03_keys_series.isin(["", "NAN", "NONE"]))
-    df_unmatched = df_rp03[not_in_rp01_mask]
-
-    return int(round(_clean_num(df_unmatched[qty_col]).sum()))
 
 
 # =========================================================================
@@ -545,7 +355,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         value=pd.to_datetime("2026-11-13"),
         key="m_date_input",
     )
-    st.sidebar.info("📌 หน้านี้แยกข้อมูลจากหน้าย้อนหลัง (ใช้การกรอกหรืออัปเดตแยกเฉพาะกะเช้าปัจจุบัน)")
 else:
     hist_date = st.sidebar.date_input(
         "ประจำวันที่ (ย้อนหลัง)",
@@ -553,41 +362,23 @@ else:
         key="h_date_input",
     )
 
-    # ส่วน Import ไฟล์รายงานใช้เฉพาะหน้า "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)" เท่านั้น
-    st.sidebar.markdown(
-        '<div class="sb-label">Import ไฟล์รายงาน (เฉพาะย้อนหลัง)</div>', unsafe_allow_html=True
-    )
-    uploaded_rp01_16 = st.sidebar.file_uploader(
-        "1. อัปโหลดรายงาน RP01 (16.10 น.)",
-        type=["xlsx", "xls", "csv"],
-        key="hist_rp01_16",
-    )
-    uploaded_rp01_22 = st.sidebar.file_uploader(
-        "2. อัปโหลดรายงาน RP01 (ต่อท้าย 22.00)",
-        type=["xlsx", "xls", "csv"],
-        key="hist_rp01_22",
-    )
-    uploaded_rp03 = st.sidebar.file_uploader(
-        "3. อัปโหลดรายงาน RP03",
-        type=["xlsx", "xls", "csv"],
-        key="hist_rp03",
-    )
-    uploaded_rp42 = st.sidebar.file_uploader(
-        "4. อัปโหลดรายงาน RP42",
-        type=["xlsx", "xls", "csv"],
-        key="hist_rp42",
-    )
-
-    _chips = "".join(
-        f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
-        for n, f in (
-            ("RP01 16:10", uploaded_rp01_16),
-            ("RP01 22:00", uploaded_rp01_22),
-            ("RP03", uploaded_rp03),
-            ("RP42", uploaded_rp42),
-        )
-    )
-    st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
+st.sidebar.markdown(
+    '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
+)
+uploaded_rp01 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP01", type=["xlsx", "xls", "csv"], key="rp01"
+)
+uploaded_rp03 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
+)
+uploaded_rp42 = st.sidebar.file_uploader(
+    "อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
+)
+_chips = "".join(
+    f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
+    for n, f in (("RP01", uploaded_rp01), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
+)
+st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
 st.markdown(
     '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
@@ -598,7 +389,7 @@ st.markdown(
 )
 
 # =========================================================================
-# ชีตที่ 1: สถานการณ์การรับ (กะเช้าปัจจุบัน) -> แยกอิสระไม่ยุ่งกับไฟล์ย้อนหลัง
+# ชีตที่ 1: สถานการณ์การรับ (กะเช้าปัจจุบัน)
 # =========================================================================
 if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
     inv_all = st.session_state.get("inv_all", 6058)
@@ -740,92 +531,31 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             )
 
 # =========================================================================
-# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง) -> ประมวลผลจาก RP01, RP03, RP42
+# ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
 # =========================================================================
 else:
-    # กำหนดค่าเริ่มต้นใน session_state (ข้อ 1, 7, 8 เป็น manual)
-    st.session_state.setdefault("hist_inv", 6126)
-    st.session_state.setdefault("hist_total_recv", 5904)
-    st.session_state.setdefault("hist_complete", 5722)
-    st.session_state.setdefault("hist_extra", 138)
-    st.session_state.setdefault("hist_delayed", 0)
-    st.session_state.setdefault("hist_not_po", 73)
-    st.session_state.setdefault("hist_not_billed", 250)
+    hist_inv = st.session_state.get("hist_inv", 6126)
+    hist_total_recv = st.session_state.get("hist_total_recv", 5904)
+    hist_complete = st.session_state.get("hist_complete", 5722)
+    hist_extra = st.session_state.get("hist_extra", 138)
+    hist_delayed = st.session_state.get("hist_delayed", 0)
+    hist_not_po = st.session_state.get("hist_not_po", 73)
+    hist_not_billed = st.session_state.get("hist_not_billed", 250)
 
-    # ตรวจสอบและประมวลผลไฟล์เมื่อมีการอัปโหลดเข้ามาใหม่
-    import_errors = []
-    rp01_22_df = None
-
-    # ข้อ 2: งานรับทั้งหมด (16.10 น.) -> ใช้ยอด Pallets จาก RP01 (16.10)
-    if uploaded_rp01_16 is not None:
-        try:
-            pallets_16, df_16 = parse_rp01_pallets(uploaded_rp01_16)
-            # เผื่อกรณีอัปโหลดไฟล์ที่ชื่อลงท้าย 22.00 ผิดช่อง ระบบจะแยกให้อัตโนมัติ
-            if "22.00" in uploaded_rp01_16.name or "22_00" in uploaded_rp01_16.name:
-                st.session_state["hist_not_billed"] = pallets_16
-                rp01_22_df = df_16
-            else:
-                st.session_state["hist_total_recv"] = pallets_16
-        except Exception as e:
-            import_errors.append(f"RP01 (16.10): {e}")
-
-    # ข้อ 9: ยังไม่ยื่นบิล -> RP01 ช่วงหลัง 22.00 น. (ไฟล์ลงท้าย 22.00)
-    if uploaded_rp01_22 is not None:
-        try:
-            pallets_22, df_22 = parse_rp01_pallets(uploaded_rp01_22)
-            st.session_state["hist_not_billed"] = pallets_22
-            rp01_22_df = df_22
-        except Exception as e:
-            import_errors.append(f"RP01 (22.00): {e}")
-
-    # ข้อ 3: งาน Complete (22.00 น.) -> RP42 ยอด Pallets Verified
-    if uploaded_rp42 is not None:
-        try:
-            verified_42 = parse_rp42_verified_pallets(uploaded_rp42)
-            st.session_state["hist_complete"] = verified_42
-        except Exception as e:
-            import_errors.append(f"RP42: {e}")
-
-    # ข้อ 4: งานนอกรอบ Complete -> RP01 22.00 VLOOKUP กับ RP03 (ตั้งแต่บรรทัดที่ 12 ลงไป)
-    if uploaded_rp03 is not None:
-        if rp01_22_df is not None:
-            try:
-                extra_qty = parse_rp03_extra_complete(uploaded_rp03, rp01_22_df)
-                st.session_state["hist_extra"] = extra_qty
-            except Exception as e:
-                import_errors.append(f"RP03 VLOOKUP: {e}")
-        else:
-            st.warning("⚠️ กรุณาอัปโหลดไฟล์ **RP01 (ต่อท้าย 22.00)** ด้วย เพื่อใช้ VLOOKUP หา **งานนอกรอบ Complete** จาก RP03")
-
-    for err in import_errors:
-        st.error(f"❌ ข้อผิดพลาดในการอ่านไฟล์ {err}")
-
-    # ดึงค่าล่าสุดมาคำนวณผลลัพธ์
-    hist_inv = st.session_state["hist_inv"]                 # ข้อ 1: Manual
-    hist_total_recv = st.session_state["hist_total_recv"]   # ข้อ 2: RP01 (16.10)
-    hist_complete = st.session_state["hist_complete"]       # ข้อ 3: RP42 Verified
-    hist_extra = st.session_state["hist_extra"]             # ข้อ 4: RP03 VLOOKUP RP01 (22.00)
-    hist_delayed = st.session_state["hist_delayed"]         # ข้อ 7: Manual
-    hist_not_po = st.session_state["hist_not_po"]           # ข้อ 8: Manual
-    hist_not_billed = st.session_state["hist_not_billed"]   # ข้อ 9: RP01 (22.00)
-
-    # ข้อ 10: งานไม่ได้รับทั้งหมด = ส่งไม่ครบตาม PO + ยังไม่ยื่นบิล (+ เลื่อนส่ง หากมีการกรอก)
-    hist_not_recv = hist_not_po + hist_not_billed + hist_delayed
-
-    # ข้อ 6: งานไม่ได้รับ (%) = ยอด % ของงานไม่ได้รับเทียบงานรับทั้งหมด (16.10 น.)
+    hist_not_recv = hist_delayed + hist_not_po + hist_not_billed
     hist_pct_not_recv = (
-        (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0.0
+        (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
     )
 
     st.markdown(
         '<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True
     )
-    # ข้อ 5: ตัดช่อง "งานไม่ได้รับ" เดิมทิ้ง เหลือ 9 ช่องแสดงผลตามรายการที่กำหนด
     hist_report_values = [
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
         ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
         ("งานนอกรอบ Complete", f"{hist_extra:,}", False),
+        ("งานไม่ได้รับ", f"{hist_not_recv:,}", True),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
         ("เลื่อนส่ง", f"{hist_delayed:,}", False),
         ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
@@ -853,7 +583,7 @@ else:
             )
             st.plotly_chart(
                 tube_chart(
-                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับทั้งหมด"],
+                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับ"],
                     [hist_total_recv, hist_complete, hist_extra, hist_not_recv],
                     base=hist_total_recv,
                     height=320,
@@ -879,27 +609,27 @@ else:
     with st.expander("✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)", expanded=False):
         hc1, hc2, hc3, hc4 = st.columns(4, gap="small")
         with hc1:
-            st.number_input(
-                "1. ประมาณการรับ (Inventory) [Manual]", step=1, key="hist_inv"
+            hist_inv = st.number_input(
+                "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
             )
-            st.number_input(
-                "2. งานรับทั้งหมด (16.10 น.) [RP01]", step=1, key="hist_total_recv"
+            hist_total_recv = st.number_input(
+                "งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv"
             )
         with hc2:
-            st.number_input(
-                "3. งาน Complete (22.00 น.) [RP42]", step=1, key="hist_complete"
+            hist_complete = st.number_input(
+                "งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete"
             )
-            st.number_input(
-                "4. งานนอกรอบ Complete [RP03 VLOOKUP]", step=1, key="hist_extra"
+            hist_extra = st.number_input(
+                "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
             )
         with hc3:
-            st.number_input(
-                "7. เลื่อนส่ง [Manual]", step=1, key="hist_delayed"
+            hist_delayed = st.number_input(
+                "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
             )
-            st.number_input(
-                "8. ส่งไม่ครบตาม PO [Manual]", step=1, key="hist_not_po"
+            hist_not_po = st.number_input(
+                "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
             )
         with hc4:
-            st.number_input(
-                "9. ยังไม่ยื่นบิล [RP01 22.00]", step=1, key="hist_not_billed"
+            hist_not_billed = st.number_input(
+                "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
             )
