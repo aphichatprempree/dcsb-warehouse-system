@@ -107,10 +107,13 @@ def _load_morning_metrics(files):
             result["sup_morning_missing"] = _sum_numeric(
                 rp42, "Pallets Qty", in_transit & ~checked_in & _window_mask(rp42, "morning")
             )
-        if files["rp03"] is not None and result.get("report_date"):
-            rp03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Purchase Order", "Schedule Date"])
+        if files["rp03"] is not None:
+            rp03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Schedule Date"])
             schedule = pd.to_datetime(rp03[_column(rp03, "Schedule Date")], dayfirst=True, errors="coerce").dt.date
-            result["extra_work"] = _sum_numeric(rp03, "Total Case Qty (iLPNs)", schedule.notna() & schedule.ne(result["report_date"]))
+            today = pd.Timestamp.now(tz="Asia/Bangkok").date()
+            result["extra_work"] = _sum_numeric(
+                rp03, "Total Case Qty (iLPNs)", schedule.notna() & schedule.ne(today)
+            )
         if all(k in result for k in ("recv_start", "in_transit", "sup_night_missing", "sup_morning_missing")):
             result["total_remaining"] = (
                 result["recv_start"] + result["in_transit"]
