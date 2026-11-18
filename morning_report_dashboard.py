@@ -764,7 +764,7 @@ NAV = [
     "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
     "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
 ]
-NAV_ICON = {NAV[0]: "🕘", NAV[1]: "🌅"}
+NAV_ICON = {NAV[0]: "🌙", NAV[1]: "☀️"}
 
 st.sidebar.markdown(
     '<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div>'
