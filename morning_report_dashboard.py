@@ -82,13 +82,9 @@ def _window_mask(frame, shift):
 def _load_morning_metrics(files):
     result = {}
     try:
-        rp01_file = files["rp01_1610"] if files["rp01_1610"] is not None else files["rp01_2200"]
-        if rp01_file is not None:
-            rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
-            result["report_date"] = _report_date_from_frame(rp01)
-            result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
-            result["night_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "night"))
-            result["morning_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "morning"))
+        for key in ("rp42", "rp03"):
+            if not result.get("report_date") and files.get(key) is not None:
+                result["report_date"] = _report_metadata_date(files[key])
         if files["rp42"] is not None:
             rp42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC", "Window Time", "CHECK_IN_USER"])
             status = rp42[_column(rp42, "ASN_STATUS_DESC")].astype(str).str.strip().str.casefold()
@@ -97,6 +93,9 @@ def _load_morning_metrics(files):
             in_transit = status.eq("intransit")
             user = rp42[_column(rp42, "CHECK_IN_USER")]
             checked_in = user.notna() & user.astype(str).str.strip().ne("")
+            result["inv_all"] = _sum_numeric(rp42, "Pallets Qty")
+            result["night_received"] = _sum_numeric(rp42, "Pallets Qty", _window_mask(rp42, "night"))
+            result["morning_received"] = _sum_numeric(rp42, "Pallets Qty", _window_mask(rp42, "morning"))
             result["complete_night"] = _sum_numeric(rp42, "Pallets Qty", verified & _window_mask(rp42, "night"))
             result["complete_morning"] = _sum_numeric(rp42, "Pallets Qty", verified & _window_mask(rp42, "morning"))
             result["recv_start"] = _sum_numeric(rp42, "Pallets Qty", started)
@@ -107,10 +106,6 @@ def _load_morning_metrics(files):
             result["sup_morning_missing"] = _sum_numeric(
                 rp42, "Pallets Qty", in_transit & ~checked_in & _window_mask(rp42, "morning")
             )
-        if files["rp03"] is not None and result.get("report_date"):
-            rp03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Purchase Order", "Schedule Date"])
-            schedule = pd.to_datetime(rp03[_column(rp03, "Schedule Date")], dayfirst=True, errors="coerce").dt.date
-            result["extra_work"] = _sum_numeric(rp03, "Total Case Qty (iLPNs)", schedule.notna() & schedule.ne(result["report_date"]))
         if all(k in result for k in ("recv_start", "in_transit", "sup_night_missing", "sup_morning_missing")):
             result["total_remaining"] = (
                 result["recv_start"] + result["in_transit"]
@@ -119,6 +114,13 @@ def _load_morning_metrics(files):
         return result, None
     except Exception as exc:
         return result, str(exc)
+
+
+def _rp03_extra_work(upload, current_date):
+    """RP03: sum Total Case Qty (iLPNs) of rows whose Schedule Date is not the current report date (blank/unreadable dates are counted)."""
+    rp03 = _read_report(upload, ["Total Case Qty (iLPNs)", "Schedule Date"])
+    schedule = pd.to_datetime(rp03[_column(rp03, "Schedule Date")], dayfirst=True, errors="coerce").dt.date
+    return _sum_numeric(rp03, "Total Case Qty (iLPNs)", schedule.ne(current_date))
 
 
 def _report_date_from_frame(frame):
@@ -902,17 +904,14 @@ _page_id = "morning" if sheet_selection == NAV[1] else "history"
 
 def _render_upload_section(page_id, title, expanded):
     with st.sidebar.expander(title, expanded=expanded):
-        uploads = {
-            "rp01_1610": st.file_uploader(
-                "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
-            ),
-        }
+        uploads = {"rp01_1610": None, "rp01_2200": None}
         if page_id == "history":
+            uploads["rp01_1610"] = st.file_uploader(
+                "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
+            )
             uploads["rp01_2200"] = st.file_uploader(
                 "RP01 หลัง 22.00", type=["xlsx", "xls"], key=f"{page_id}_rp01_2200"
             )
-        else:
-            uploads["rp01_2200"] = None
         uploads.update({
             "rp03": st.file_uploader(
                 "RP03 GRN", type=["xlsx", "xls"], key=f"{page_id}_rp03"
@@ -974,6 +973,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         st.session_state[field] = value
     st.session_state["_loaded_morning_date"] = selected_morning_date
     if _new_import and any(_uploads):
+        if uploaded_rp03 is not None:
+            try:
+                imported["extra_work"] = _rp03_extra_work(uploaded_rp03, morning_date)
+            except Exception as exc:
+                st.sidebar.error(f"คำนวณงานนอกรอบ (RP03) ไม่สำเร็จ: {exc}")
         for metric, value in imported.items():
             if metric in MORNING_DEFAULTS:
                 st.session_state[metric] = value
@@ -984,7 +988,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         st.session_state[_import_signature_key] = _import_signature
         st.sidebar.success(f"จำข้อมูลหน้ากะเช้าของวันที่ {selected_morning_date} แล้ว")
     else:
-        st.sidebar.caption("วันที่อิงจาก RP01 · ตัวเลขและข้อมูลหน้านี้จำอัตโนมัติ")
+        st.sidebar.caption("วันที่อิงจาก Report Date ใน RP42/RP03 · ตัวเลขและข้อมูลหน้านี้จำอัตโนมัติ")
     if st.session_state.get("_morning_autosave_error"):
         st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_morning_autosave_error']}")
 else:
@@ -1033,6 +1037,7 @@ if imported.get("extra_join"):
 _chips = "".join(
     f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
     for n, f in (("RP01 16.10", uploaded_rp01_1610), ("RP01 22.00", uploaded_rp01_2200), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
+    if not (sheet_selection == NAV[1] and n.startswith("RP01"))
 )
 st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
