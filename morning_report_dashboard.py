@@ -321,6 +321,7 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .report-head { color:var(--ink); text-align:left; padding:8px 14px 10px; margin-bottom:6px; border-bottom:2px solid var(--line); font-size:.92rem; font-weight:700; }
 .report-date { font-size:.74rem; font-weight:500; color:var(--muted); margin-left:5px; }
 .report-grid { display:grid; gap:12px; padding:4px 6px; }
+.report-group { grid-column:1 / -1; color:var(--ink); font-size:.8rem; font-weight:700; padding:5px 3px 2px; border-bottom:1px solid var(--line); letter-spacing:.01em; }
 .report-cell { border-radius:16px; padding:10px 8px 10px; text-align:center; background:#f1f4f9; box-shadow:var(--sh-sm); border:1.5px solid var(--line); min-height:84px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
 .report-label { color:#5d6987; font-size:.66rem; line-height:1.35; font-weight:500; }
 .report-value { color:var(--ink); font-size:1.15rem; font-weight:700; line-height:1.3; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
@@ -560,12 +561,20 @@ def tube_chart(labels, values, base, height=320):
 
 
 def report_table(title, date_str, time_str, items, cols):
-    cells = "".join(
-        f'<div class="report-cell" style="border-top:4px solid {RAINBOW[i % len(RAINBOW)]};">'
-        f'<div class="report-label">{label.replace(chr(10), "<br>")}</div>'
-        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-        for i, (label, value, alert) in enumerate(items)
-    )
+    rendered_cells = []
+    metric_index = 0
+    for item in items:
+        if len(item) == 2 and item[0] == "group":
+            rendered_cells.append(f'<div class="report-group">{item[1]}</div>')
+            continue
+        label, value, alert = item
+        rendered_cells.append(
+            f'<div class="report-cell" style="border-top:4px solid {RAINBOW[metric_index % len(RAINBOW)]};">'
+            f'<div class="report-label">{label.replace(chr(10), "<br>")}</div>'
+            f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
+        )
+        metric_index += 1
+    cells = "".join(rendered_cells)
     return (
         f'<div class="report-wrap"><div class="report-head">{title} {date_str}'
         f' <span class="report-date">{time_str}</span></div>'
@@ -774,13 +783,16 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 
     st.markdown('<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True)
     report_values = [
+        ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
         ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
         ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
+        ("group", "งาน Complete"),
         ("ยอดงาน Complete รับกะดึก", f"{complete_night:,}", False),
         ("ยอดงาน Complete รับกะเช้า", f"{complete_morning:,}", False),
         ("งาน Complete นอกรอบ (RP03)", f"{extra_work:,}", False),
         ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
+        ("group", "งานรับคงเหลือ"),
         ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f"{total_remaining:,}", True),
         ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f"{recv_start:,}", False),
         ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f"{in_transit:,}", False),
@@ -794,7 +806,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             morning_date.strftime("%d/%m/%Y"),
             "(ตาม Window Time 00.00-23.59 น.)",
             report_values,
-            7,
+            4,
         ),
         unsafe_allow_html=True,
     )
