@@ -150,6 +150,11 @@ def _po_values(text_value):
     return list(dict.fromkeys(key for value in values if (key := _norm_key(value))))
 
 
+def _item_column(frame):
+    aliases = {"item code", "item", "item number", "item no", "item no.", "sku", "product code"}
+    return next((c for c in frame.columns if c.strip().casefold() in aliases), None)
+
+
 def _lookup_delayed_pallets(rp01_file, po_text):
     frame = _read_report(rp01_file, ["P/O", "Pallets Qty"])
     requested = set(_po_values(po_text))
@@ -163,69 +168,56 @@ def _lookup_delayed_pallets(rp01_file, po_text):
     return (int(total) if total.is_integer() else total), missing
 
 
-def _lookup_reject_pallets(rp01_file, rp03_file, po_text):
-    requested = set(_po_values(po_text))
+def _lookup_reject_pallets(rp01_file, rp03_file, item_text):
+    requested = {value.casefold() for value in _po_values(item_text)}
     if not requested:
         return 0, [], []
-    rp01 = _read_report(rp01_file, ["P/O", "Pack Qty", "TI", "HI"])
-    rp03 = _read_report(rp03_file, ["Purchase Order", "Total Pack Qty"])
-    po1 = _column(rp01, "P/O")
-    po3 = _column(rp03, "Purchase Order")
-    item1 = next((c for c in rp01.columns if c.strip().casefold() == "item code"), None)
-    item3 = next((c for c in rp03.columns if c.strip().casefold() == "item code"), None)
+    rp01 = _read_report(rp01_file, ["Pack Qty", "TI", "HI"])
+    rp03 = _read_report(rp03_file, ["Total Pack Qty"])
+    item1, item3 = _item_column(rp01), _item_column(rp03)
+    if item1 is None:
+        raise ValueError("ไม่พบคอลัมน์ Item ใน RP01 (รองรับ Item Code, Item, Item Number, Item No หรือ SKU)")
+    if item3 is None:
+        raise ValueError("ไม่พบคอลัมน์ Item ใน RP03 (รองรับ Item Code, Item, Item Number, Item No หรือ SKU)")
     rp01 = rp01.assign(
-        _po=rp01[po1].map(_norm_key),
+        _item=rp01[item1].map(lambda value: _norm_key(value).casefold()),
         _expected=pd.to_numeric(rp01[_column(rp01, "Pack Qty")], errors="coerce").fillna(0),
         _ti=pd.to_numeric(rp01[_column(rp01, "TI")], errors="coerce"),
         _hi=pd.to_numeric(rp01[_column(rp01, "HI")], errors="coerce"),
     )
     rp03 = rp03.assign(
-        _po=rp03[po3].map(_norm_key),
+        _item=rp03[item3].map(lambda value: _norm_key(value).casefold()),
         _received=pd.to_numeric(rp03[_column(rp03, "Total Pack Qty")], errors="coerce").fillna(0),
     )
-    has_item_match = item1 is not None and item3 is not None
-    if has_item_match:
-        rp01["_item"] = rp01[item1].map(_norm_key)
-        rp03["_item"] = rp03[item3].map(_norm_key)
-        rp01 = rp01[rp01["_po"].isin(requested) & rp01["_item"].ne("")]
-        rp03 = rp03[rp03["_po"].isin(requested) & rp03["_item"].ne("")]
-        join_keys = ["_po", "_item"]
-    else:
-        # Some RP03 exports omit Item Code. Compare pack totals by PO only,
-        # and calculate only where that PO has one unambiguous TI/HI pair.
-        rp01 = rp01[rp01["_po"].isin(requested)]
-        rp03 = rp03[rp03["_po"].isin(requested)]
-        join_keys = ["_po"]
-    expected = rp01.groupby(join_keys, as_index=False).agg(
+    rp01 = rp01[rp01["_item"].isin(requested) & rp01["_item"].ne("")]
+    rp03 = rp03[rp03["_item"].isin(requested) & rp03["_item"].ne("")]
+    expected = rp01.groupby("_item", as_index=False).agg(
         _expected=("_expected", "sum"), _ti=("_ti", "first"), _hi=("_hi", "first")
     )
-    received = rp03.groupby(join_keys, as_index=False)["_received"].sum()
-    if not has_item_match:
-        ti_hi_counts = (
-            rp01[["_po", "_ti", "_hi"]]
-            .dropna(subset=["_ti", "_hi"])
-            .drop_duplicates()
-            .groupby("_po")
-            .size()
-        )
-        ambiguous_pos = set(ti_hi_counts[ti_hi_counts.gt(1)].index)
-        expected = expected[~expected["_po"].isin(ambiguous_pos)]
-    else:
-        ambiguous_pos = set()
-    matched_pos = set(expected["_po"])
-    missing = sorted(requested - matched_pos - ambiguous_pos)
-    joined = expected.merge(received, on=join_keys, how="left")
+    received = rp03.groupby("_item", as_index=False)["_received"].sum()
+    ti_hi_counts = (
+        rp01[["_item", "_ti", "_hi"]]
+        .dropna(subset=["_ti", "_hi"])
+        .drop_duplicates()
+        .groupby("_item")
+        .size()
+    )
+    ambiguous_items = set(ti_hi_counts[ti_hi_counts.gt(1)].index)
+    expected = expected[~expected["_item"].isin(ambiguous_items)]
+    matched_items = set(expected["_item"])
+    missing = sorted(requested - matched_items - ambiguous_items)
+    joined = expected.merge(received, on="_item", how="left")
     joined["_received"] = joined["_received"].fillna(0)
     valid = (
         joined["_ti"].notna() & joined["_ti"].gt(0)
         & joined["_hi"].notna() & joined["_hi"].gt(0)
     )
-    invalid_items = joined.loc[~valid, "_po" if not has_item_match else "_item"].drop_duplicates().tolist()
+    invalid_items = joined.loc[~valid, "_item"].drop_duplicates().tolist()
     joined = joined.loc[valid].copy()
     joined["_reject_pack"] = (joined["_expected"] - joined["_received"]).clip(lower=0)
     total = (joined["_reject_pack"] / joined["_ti"] / joined["_hi"]).sum()
     total = float(total)
-    invalid_items.extend(f"PO {po} มี TI/HI หลายชุด" for po in sorted(ambiguous_pos))
+    invalid_items.extend(f"Item {item} มี TI/HI หลายชุด" for item in sorted(ambiguous_items))
     return (int(total) if total.is_integer() else total), missing, invalid_items
 
 
@@ -270,7 +262,7 @@ REPORT_DEFAULTS = {
     "hist_not_po": 73,
     "hist_not_billed": 250,
 }
-HISTORY_PO_FIELDS = ("hist_delayed_po_input", "hist_reject_po_input", "hist_po_rp01_source")
+HISTORY_PO_FIELDS = ("hist_delayed_po_input", "hist_reject_item_input", "hist_po_rp01_source")
 MORNING_DEFAULTS = {
     "inv_all": 6058,
     "night_received": 4240,
@@ -848,7 +840,7 @@ else:
         st.session_state[field] = value
     if st.session_state.get("_loaded_history_detail_date") != selected_report_date:
         st.session_state["hist_delayed_po_input"] = record.get("hist_delayed_po_input", "") if record else ""
-        st.session_state["hist_reject_po_input"] = record.get("hist_reject_po_input", "") if record else ""
+        st.session_state["hist_reject_item_input"] = record.get("hist_reject_item_input", "") if record else ""
         st.session_state["hist_po_rp01_source"] = record.get("hist_po_rp01_source", "RP01 16.10") if record else "RP01 16.10"
         st.session_state["_loaded_history_detail_date"] = selected_report_date
     st.session_state["_loaded_report_date"] = selected_report_date
@@ -1035,9 +1027,9 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 # =========================================================================
 else:
     with st.expander("📋 วาง PO สำหรับคำนวณเลื่อนส่งและ Reject", expanded=False):
-        st.caption("ใส่ PO ทีละบรรทัด ระบบจะเทียบกับไฟล์ RP01 ที่เลือก และจำรายการแยกตามวันที่")
+        st.caption("ใส่ PO สำหรับเลื่อนส่ง และใส่รหัส Item สำหรับ Reject ระบบจะเทียบกับไฟล์ที่เลือกและจำรายการแยกตามวันที่")
         source_name = st.selectbox(
-            "เลือก RP01 สำหรับเทียบ PO",
+            "เลือก RP01 สำหรับเทียบ PO และ Item",
             ["RP01 16.10", "RP01 22.00"],
             key="hist_po_rp01_source",
             on_change=_autosave_current_report,
@@ -1053,16 +1045,16 @@ else:
             )
         with po_col2:
             st.text_area(
-                "PO Reject (หนึ่ง PO ต่อบรรทัด)",
-                key="hist_reject_po_input",
+                "Item สำหรับ Reject (หนึ่ง Item ต่อบรรทัด)",
+                key="hist_reject_item_input",
                 height=110,
-                placeholder="วางรายการ PO ที่ต้องตรวจ Reject",
+                placeholder="วางรหัส Item ที่ต้องตรวจ Reject",
                 on_change=_autosave_current_report,
             )
 
         rp01_source = uploaded_rp01_1610 if source_name == "RP01 16.10" else uploaded_rp01_2200
         delayed_pos = st.session_state.get("hist_delayed_po_input", "")
-        reject_pos = st.session_state.get("hist_reject_po_input", "")
+        reject_items = st.session_state.get("hist_reject_item_input", "")
         lookup_changed = False
         if rp01_source is None:
             st.info(f"กรุณา Import {source_name} ก่อน ระบบจึงจะเทียบ PO ได้")
@@ -1082,27 +1074,27 @@ else:
             else:
                 st.caption("ยังไม่ได้วาง PO เลื่อนส่ง · ใช้ยอดที่บันทึกไว้หรือกรอกยอดเองในตัวแก้ไขด้านล่าง")
 
-            if _po_values(reject_pos):
+            if _po_values(reject_items):
                 if uploaded_rp03 is None:
                     st.info("กรุณา Import RP03 เพื่อคำนวณ Reject")
                 else:
                     try:
                         reject_value, reject_missing, reject_invalid = _lookup_reject_pallets(
-                            rp01_source, uploaded_rp03, reject_pos
+                            rp01_source, uploaded_rp03, reject_items
                         )
                         if st.session_state.get("hist_not_po") != reject_value:
                             st.session_state["hist_not_po"] = reject_value
                             lookup_changed = True
-                        reject_count = len(_po_values(reject_pos))
-                        st.caption(f"Reject: {reject_value:,.2f} Pallets · พบ PO {reject_count - len(reject_missing)}/{reject_count}")
+                        reject_count = len(_po_values(reject_items))
+                        st.caption(f"Reject: {_format_quantity(reject_value)} Pallets · พบ Item {reject_count - len(reject_missing)}/{reject_count}")
                         if reject_missing:
-                            st.warning("PO Reject ที่ไม่พบใน RP01: " + ", ".join(reject_missing))
+                            st.warning("Item Reject ที่ไม่พบใน RP01: " + ", ".join(reject_missing))
                         if reject_invalid:
-                            st.warning("มีรายการหรือ PO ที่ไม่มีค่า TI/HI ที่ใช้คำนวณ หรือมี TI/HI หลายชุดใน PO เดียว: " + ", ".join(reject_invalid))
+                            st.warning("มี Item ที่ไม่มีค่า TI/HI สำหรับคำนวณ หรือมี TI/HI หลายชุด: " + ", ".join(reject_invalid))
                     except Exception as exc:
                         st.error(f"คำนวณ Reject ไม่สำเร็จ: {exc}")
             else:
-                st.caption("ยังไม่ได้วาง PO Reject · ใช้ยอดที่บันทึกไว้หรือกรอกยอดเองในตัวแก้ไขด้านล่าง")
+                st.caption("ยังไม่ได้วาง Item Reject · ใช้ยอดที่บันทึกไว้หรือกรอกยอดเองในตัวแก้ไขด้านล่าง")
         if lookup_changed:
             _autosave_current_report()
 
