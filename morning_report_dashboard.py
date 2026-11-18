@@ -1,7 +1,8 @@
 import json
 import hashlib
+import re
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, time
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -48,6 +49,64 @@ def _sum_numeric(frame, name, mask=None):
     total = values[mask].sum() if mask is not None else values.sum()
     total = float(total)
     return int(total) if total.is_integer() else total
+
+
+def _minutes_since_midnight(value):
+    if pd.isna(value):
+        return None
+    if isinstance(value, (datetime, pd.Timestamp, time)):
+        return value.hour * 60 + value.minute
+    if isinstance(value, (int, float)) and 0 <= float(value) < 1:
+        return int(round(float(value) * 24 * 60))
+    match = re.search(r"(\d{1,2}):(\d{2})", str(value).strip())
+    if not match:
+        return None
+    hour, minute = int(match.group(1)), int(match.group(2))
+    return hour * 60 + minute if hour <= 24 and minute < 60 else None
+
+
+def _window_mask(frame, shift):
+    col = _column(frame, "Window Time")
+    minutes = frame[col].map(_minutes_since_midnight)
+    if shift == "night":
+        return minutes.notna() & (minutes < 5 * 60)
+    return minutes.notna() & (minutes >= 5 * 60) & (minutes < 24 * 60)
+
+
+def _load_morning_metrics(files):
+    result = {}
+    try:
+        rp01_file = files["rp01_1610"] if files["rp01_1610"] is not None else files["rp01_2200"]
+        if rp01_file is not None:
+            rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
+            result["report_date"] = _report_date_from_frame(rp01)
+            result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
+            result["night_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "night"))
+            result["morning_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "morning"))
+        if files["rp42"] is not None:
+            rp42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC", "Window Time", "CHECK_IN_USER"])
+            status = rp42[_column(rp42, "ASN_STATUS_DESC")].astype(str).str.strip().str.casefold()
+            verified = status.isin({"verified", "receiving verified"})
+            started = status.eq("receiving started")
+            in_transit = status.eq("intransit")
+            user = rp42[_column(rp42, "CHECK_IN_USER")]
+            checked_in = user.notna() & user.astype(str).str.strip().ne("")
+            result["complete_night"] = _sum_numeric(rp42, "Pallets Qty", verified & _window_mask(rp42, "night"))
+            result["complete_morning"] = _sum_numeric(rp42, "Pallets Qty", verified & _window_mask(rp42, "morning"))
+            result["recv_start"] = _sum_numeric(rp42, "Pallets Qty", started)
+            result["in_transit"] = _sum_numeric(rp42, "Pallets Qty", in_transit & checked_in)
+            result["sup_night_missing"] = _sum_numeric(
+                rp42, "Pallets Qty", in_transit & ~checked_in & _window_mask(rp42, "night")
+            )
+        if files["rp03"] is not None and result.get("report_date"):
+            rp03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Purchase Order", "Schedule Date"])
+            schedule = pd.to_datetime(rp03[_column(rp03, "Schedule Date")], dayfirst=True, errors="coerce").dt.date
+            result["extra_work"] = _sum_numeric(rp03, "Total Case Qty (iLPNs)", schedule.notna() & schedule.ne(result["report_date"]))
+        if all(k in result for k in ("recv_start", "in_transit", "sup_night_missing")):
+            result["total_remaining"] = result["recv_start"] + result["in_transit"] + result["sup_night_missing"]
+        return result, None
+    except Exception as exc:
+        return result, str(exc)
 
 
 def _report_date_from_frame(frame):
@@ -121,14 +180,12 @@ MORNING_DEFAULTS = {
     "night_received": 4240,
     "morning_received": 1818,
     "complete_night": 4475,
-    "work_night": 3507,
-    "work_morning": 310,
-    "extra_work": 658,
+    "complete_morning": 0,
+    "extra_work": 0,
     "total_remaining": 2425,
     "recv_start": 473,
     "in_transit": 268,
     "sup_night_missing": 239,
-    "sup_morning_missing": 1445,
 }
 
 
@@ -156,7 +213,7 @@ def _save_report_record(report_date, values, page="history"):
         **{field: values.get(field, fields[field]) for field in fields},
         "updated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
     }
-    store[f"{page}_latest_date"] = report_date
+    store["morning_latest_date" if page == "morning" else "latest_date"] = report_date
     temp_path = REPORT_STORE_PATH.with_suffix(".json.tmp")
     with temp_path.open("w", encoding="utf-8") as stream:
         json.dump(store, stream, ensure_ascii=False, indent=2)
@@ -183,6 +240,7 @@ def _autosave_morning_report():
     if not report_date:
         return
     values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
+    values["total_remaining"] = sum(values[field] for field in ("recv_start", "in_transit", "sup_night_missing"))
     try:
         _save_report_record(report_date.strftime("%Y-%m-%d"), values, page="morning")
         st.session_state["_morning_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
@@ -563,12 +621,16 @@ uploaded_rp03 = st.sidebar.file_uploader(
 uploaded_rp42 = st.sidebar.file_uploader(
     "RP42 ASN Status", type=["xlsx", "xls"], key=f"{_page_id}_rp42"
 )
-imported, import_error = _load_imported_metrics({
+_uploaded_files = {
     "rp01_1610": uploaded_rp01_1610,
     "rp01_2200": uploaded_rp01_2200,
     "rp03": uploaded_rp03,
     "rp42": uploaded_rp42,
-})
+}
+if sheet_selection == NAV[1]:
+    imported, import_error = _load_morning_metrics(_uploaded_files)
+else:
+    imported, import_error = _load_imported_metrics(_uploaded_files)
 _uploads = (uploaded_rp01_1610, uploaded_rp01_2200, uploaded_rp03, uploaded_rp42)
 _import_signature = hashlib.sha256(
     "|".join(
@@ -599,7 +661,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             st.session_state[field] = value
         st.session_state["_loaded_morning_date"] = selected_morning_date
     if _new_import and any(_uploads):
+        for metric, value in imported.items():
+            if metric in MORNING_DEFAULTS:
+                st.session_state[metric] = value
         values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
+        values["total_remaining"] = sum(values[field] for field in ("recv_start", "in_transit", "sup_night_missing"))
         _save_report_record(selected_morning_date, values, page="morning")
         REPORT_STORE = _load_report_store()
         st.session_state[_import_signature_key] = _import_signature
@@ -669,30 +735,29 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     night_received = st.session_state.get("night_received", 4240)
     morning_received = st.session_state.get("morning_received", 1818)
     complete_night = st.session_state.get("complete_night", 4475)
-    work_night = st.session_state.get("work_night", 3507)
-    work_morning = st.session_state.get("work_morning", 310)
-    extra_work = st.session_state.get("extra_work", 658)
+    complete_morning = st.session_state.get("complete_morning", 0)
+    extra_work = st.session_state.get("extra_work", 0)
 
-    pct_night_received = (night_received / inv_all * 100) if inv_all > 0 else 0
-    total_remaining = st.session_state.get("total_remaining", 2425)
+    pct_night_received = (complete_night / inv_all * 100) if inv_all > 0 else 0
     recv_start = st.session_state.get("recv_start", 473)
     in_transit = st.session_state.get("in_transit", 268)
     sup_night_missing = st.session_state.get("sup_night_missing", 239)
-    sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
-    pct_remaining = (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
+    total_remaining = recv_start + in_transit + sup_night_missing
+    st.session_state["total_remaining"] = total_remaining
+    pct_remaining = (sup_night_missing / inv_all * 100) if inv_all > 0 else 0
 
     st.markdown(
         f"""
     <div class="focus-grid">
         <div class="focus-card">
-            <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
+        <div class="focus-label">📦 ยอดงาน Complete รับกะดึก</div>
             <div class="focus-value">{complete_night:,} <span>Pallets</span></div>
             <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
         </div>
         <div class="focus-card alert">
-            <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะเช้า</div>
-            <div class="focus-value">{sup_morning_missing:,} <span>Pallets</span></div>
-            <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
+            <div class="focus-label">🚨 Supplier ที่ยังไม่มาส่งกะดึก</div>
+            <div class="focus-value">{sup_night_missing:,} <span>Pallets</span></div>
+            <div class="focus-unit">InTransit ที่ยังไม่มี Check-in ช่วง 00.00-05.00</div>
         </div>
     </div>
     """,
@@ -704,23 +769,21 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
         ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
         ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
-        ("ยอดงาน Complete รับกะดึก\n(00.00-06.00)", f"{complete_night:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานกะดึก", f"{work_night:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานกะเช้า", f"{work_morning:,}", False),
-        ("งาน Complete (00.00-06.00)\nงานนอกรอบ", f"{extra_work:,}", False),
+        ("ยอดงาน Complete รับกะดึก", f"{complete_night:,}", False),
+        ("ยอดงาน Complete รับกะเช้า", f"{complete_morning:,}", False),
+        ("งาน Complete นอกรอบ (RP03)", f"{extra_work:,}", False),
         ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
         ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f"{total_remaining:,}", True),
         ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f"{recv_start:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nรอลงสินค้า (InTransit)", f"{in_transit:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f"{in_transit:,}", False),
         ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก", f"{sup_night_missing:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า", f"{sup_morning_missing:,}", False),
-        ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
+        ("(%) Supplier ค้างรับกะดึก", f"{pct_remaining:.2f}%", True),
     ]
     st.markdown(
         report_table(
             "รายงานการรับสินค้าประจำวันที่",
             morning_date.strftime("%d/%m/%Y"),
-            "(00.00 - 06.00 น.)",
+            "(ตาม Window Time 00.00-23.59 น.)",
             report_values,
             7,
         ),
@@ -742,11 +805,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             )
     with c2:
         with st.container(key="card_radial_2"):
-            chart_card_title("ยอดงาน Complete รับกะดึก", "(00.00-06.00) แยกตามประเภทงาน")
+            chart_card_title("ยอดงาน Complete", "แยกตามช่วง Window Time")
             st.plotly_chart(
                 radial_chart(
-                    ["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"],
-                    [work_night, work_morning, extra_work],
+                    ["กะดึก", "กะเช้า", "นอกรอบ"],
+                    [complete_night, complete_morning, extra_work],
                 ),
                 use_container_width=True,
             )
@@ -755,8 +818,8 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             chart_card_title("สรุปงานรับคงเหลือทั้งหมด", "หน่วย Pallets แยกตามสถานะ")
             st.plotly_chart(
                 radial_chart(
-                    ["กำลังลงสินค้า", "รอลงสินค้า", "Supplier กะดึก", "Supplier กะเช้า"],
-                    [recv_start, in_transit, sup_night_missing, sup_morning_missing],
+                    ["กำลังลงสินค้า", "รอลงสินค้า (Check-in แล้ว)", "Supplier กะดึก (ยังไม่ Check-in)"],
+                    [recv_start, in_transit, sup_night_missing],
                 ),
                 use_container_width=True,
             )
@@ -777,30 +840,21 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             complete_night = st.number_input(
                 "ยอดงาน Complete รับกะดึก", value=complete_night, step=1, key="complete_night", on_change=_autosave_morning_report
             )
-            work_night = st.number_input(
-                "งาน Complete - กะดึก", value=work_night, step=1, key="work_night", on_change=_autosave_morning_report
-            )
-            work_morning = st.number_input(
-                "งาน Complete - กะเช้า", value=work_morning, step=1, key="work_morning", on_change=_autosave_morning_report
+            complete_morning = st.number_input(
+                "ยอดงาน Complete รับกะเช้า", value=complete_morning, step=1, key="complete_morning", on_change=_autosave_morning_report
             )
             extra_work = st.number_input(
                 "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work", on_change=_autosave_morning_report
             )
         with col_c:
-            total_remaining = st.number_input(
-                "สรุปงานรับคงเหลือทั้งหมด", value=total_remaining, step=1, key="total_remaining", on_change=_autosave_morning_report
-            )
             recv_start = st.number_input(
                 "กำลังลงสินค้า (Receiving Start)", value=recv_start, step=1, key="recv_start", on_change=_autosave_morning_report
             )
             in_transit = st.number_input(
-                "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit", on_change=_autosave_morning_report
+                "InTransit ที่ Check-in แล้ว", value=in_transit, step=1, key="in_transit", on_change=_autosave_morning_report
             )
             sup_night_missing = st.number_input(
                 "Supplier ยังไม่มาส่งกะดึก", value=sup_night_missing, step=1, key="sup_night_missing", on_change=_autosave_morning_report
-            )
-            sup_morning_missing = st.number_input(
-                "Supplier ยังไม่มาส่งกะเช้า", value=sup_morning_missing, step=1, key="sup_morning_missing", on_change=_autosave_morning_report
             )
         if st.session_state.get("_morning_autosaved_at"):
             st.caption(f"จำข้อมูลล่าสุดอัตโนมัติ · {st.session_state['_morning_autosaved_at']}")
