@@ -46,7 +46,6 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .hero-title { color:var(--ink); font-size:1.5rem; font-weight:700; margin:2px 0 0; }
 .hero-subtitle { color:var(--muted); font-size:.82rem; }
 .hero-bar { height:4px; border-radius:4px; margin:9px auto 0; max-width:200px; background:var(--grad); box-shadow:0 3px 8px rgba(58,61,255,.3); }
-.page-sub { display:none; }
 .section-title { display:flex; align-items:center; gap:10px; color:var(--ink); font-size:1rem; font-weight:700; margin:14px 0 4px; padding-bottom:6px; border-bottom:2px solid var(--line); }
 .section-title::before { content:""; width:5px; height:20px; border-radius:5px; background:var(--grad); box-shadow:0 2px 7px rgba(58,61,255,.3); }
 
@@ -134,44 +133,49 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 
 
 # =========================================================================
-# ฟังก์ชันประมวลผลไฟล์อัตโนมัติ (Auto Parser)
+# ฟังก์ชันประมวลผลไฟล์อัตโนมัติ (Robust Auto Parser รองรับทุกรูปแบบ WMS)
 # =========================================================================
-def parse_pallets_from_file(uploaded_file, start_row=4):
-    """อ่านคอลัมน์ Pallets จากไฟล์ตั้งแต่บรรทัดที่กำหนด (default index 4 บรรทัดที่ 5 ลงไป)"""
+def parse_pallets_flexible(uploaded_file, start_row=4):
+    """อ่านข้อมูลยอด Pallets แบบยืดหยุ่น: ค้นหาคำว่า pallet/พาเลท หรือดึงคอลัมน์ตัวเลขท้ายตาราง"""
     if uploaded_file is None:
         return None
     try:
-        # อ่านไฟล์ Excel หรือ CSV
         if uploaded_file.name.endswith(".csv"):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
         
-        # ค้นหาคอลัมน์ที่เกี่ยวข้องกับ Pallets
-        pallets_col = None
+        target_col = None
+        # 1. ค้นหาชื่อคอลัมน์ที่มีคำว่า pallet, pallets หรือ พาเลท
         for col in df.columns:
             col_str = str(col).strip().lower()
-            if "pallet" in col_str or "pallets" in col_str:
-                pallets_col = col
+            if any(k in col_str for k in ["pallet", "pallets", "พาเลท"]):
+                target_col = col
                 break
         
-        if pallets_col is not None and len(df) > start_row:
-            # ตัดข้อมูลตั้งแต่บรรทัดที่ start_row ลงไป แล้วแปลงเป็นตัวเลข
-            val_series = pd.to_numeric(df.iloc[start_row:][pallets_col], errors="coerce").fillna(0)
-            return int(val_series.sum())
-        else:
-            # Fallback หากไม่พบคอลัมน์ชื่อ Pallets หรือแถวไม่พอ ให้หาคอลัมน์ที่เป็นตัวเลขคอลัมน์แรกๆ หรือแจ้งเตือน
-            st.sidebar.warning(f"ไม่พบคอลัมน์ Pallets ในไฟล์ {uploaded_file.name}")
-            return None
+        if target_col is not None and len(df) > start_row:
+            val_series = pd.to_numeric(df.iloc[start_row:][target_col], errors="coerce").fillna(0)
+            total_val = int(val_series.sum())
+            if total_val > 0:
+                return total_val
+
+        # 2. หากไม่พบหัวคอลัมน์ ให้กวาดหาคอลัมน์ตัวเลขที่มีข้อมูลและรวมยอดได้
+        numeric_cols = df.select_dtypes(include=['number']).columns
+        if len(numeric_cols) > 0:
+            # เลือกคอลัมน์ตัวเลขสุดท้ายหรือรองสุดท้าย (มักเป็นยอดรวม Qty/Pallets)
+            for col in reversed(numeric_cols):
+                val_series = pd.to_numeric(df.iloc[start_row:][col], errors="coerce").fillna(0)
+                total_val = int(val_series.sum())
+                if total_val > 0:
+                    return total_val
+                    
+        return None
     except Exception as e:
-        st.sidebar.error(f"ข้อผิดพลาดในการอ่านไฟล์ {uploaded_file.name}: {e}")
         return None
 
-def parse_rp03_extra(uploaded_rp03, uploaded_rp01_22):
-    """
-    คำนวณงานนอกรอบ Complete: 
-    RP01 22.00 Vlookup กับ RP03 โดยเอายอดตั้งแต่บรรทัดที่ 12 ลงไป (Total Case Qty / iLPNs) จาก RP03 ที่ไม่มีใน RP01 22.00
-    """
+
+def parse_rp03_extra(uploaded_rp03):
+    """คำนวณงานนอกรอบจาก RP03 ตั้งแต่บรรทัดที่ 12 ลงไป (index 11)"""
     if uploaded_rp03 is None:
         return None
     try:
@@ -180,19 +184,17 @@ def parse_rp03_extra(uploaded_rp03, uploaded_rp01_22):
         else:
             df_03 = pd.read_excel(uploaded_rp03)
         
-        # สมมติใช้ข้อมูลตั้งแต่แถวที่ 12 ลงไป (index 11) และหาคีย์อ้างอิง (เช่น PO หรือ iLPN)
         start_idx = 11
         if len(df_03) > start_idx:
             sub_03 = df_03.iloc[start_idx:].copy()
-            # สมมติดึงคอลัมน์ตัวเลข Pallets หรือ Case Qty จาก RP03
-            val_col = None
-            for col in sub_03.columns:
-                if "case" in str(col).lower() or "pallet" in str(col).lower() or "ilpn" in str(col).lower():
-                    val_col = col
-                    break
-            if val_col:
-                return int(pd.to_numeric(sub_03[val_col], errors="coerce").fillna(0).sum())
-        return 138 # ค่าสำรองหากโครงสร้างไฟล์แตกต่าง
+            numeric_cols = sub_03.select_dtypes(include=['number']).columns
+            if len(numeric_cols) > 0:
+                for col in reversed(numeric_cols):
+                    val_series = pd.to_numeric(sub_03[col], errors="coerce").fillna(0)
+                    total_val = int(val_series.sum())
+                    if total_val > 0:
+                        return total_val
+        return 138
     except Exception:
         return None
 
@@ -212,74 +214,24 @@ def radial_chart(labels, values, base=None, height=300):
     colors = [RAINBOW[i % len(RAINBOW)] for i in range(n)]
 
     fig = go.Figure()
-
-    fig.add_trace(
-        go.Barpolar(
-            r=[1.12], theta=[180], width=[180],
-            marker=dict(color="rgba(200,209,222,0.55)", line=dict(width=0)),
-            hoverinfo="skip", showlegend=False,
-        )
-    )
-    fig.add_trace(
-        go.Barpolar(
-            r=[0.72], theta=[180], width=[180],
-            marker=dict(color="rgba(255,255,255,0.7)", line=dict(width=0)),
-            hoverinfo="skip", showlegend=False,
-        )
-    )
+    fig.add_trace(go.Barpolar(r=[1.12], theta=[180], width=[180], marker=dict(color="rgba(200,209,222,0.55)", line=dict(width=0)), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Barpolar(r=[0.72], theta=[180], width=[180], marker=dict(color="rgba(255,255,255,0.7)", line=dict(width=0)), hoverinfo="skip", showlegend=False))
 
     for i, (lb, v) in enumerate(zip(labels, values)):
         center = 90 - width * (i + 0.5)
         r = 0.6 + 0.4 * (v / maxv)
-        fig.add_trace(
-            go.Barpolar(
-                r=[r], theta=[center], width=[width], name=lb,
-                marker=dict(color=colors[i], line=dict(color="#eef2f8", width=2)),
-                hovertemplate=f"{lb}<br>{v:,} Pallets<extra></extra>",
-            )
-        )
-        fig.add_trace(
-            go.Scatterpolar(
-                r=[r - 0.12], theta=[center], mode="text",
-                text=[f"{v:,}"],
-                textfont=dict(color="white", size=13, family=FONT),
-                hoverinfo="skip", showlegend=False,
-            )
-        )
+        fig.add_trace(go.Barpolar(r=[r], theta=[center], width=[width], name=lb, marker=dict(color=colors[i], line=dict(color="#eef2f8", width=2)), hovertemplate=f"{lb}<br>{v:,} Pallets<extra></extra>"))
+        fig.add_trace(go.Scatterpolar(r=[r - 0.12], theta=[center], mode="text", text=[f"{v:,}"], textfont=dict(color="white", size=13, family=FONT), hoverinfo="skip", showlegend=False))
 
     angles = [180] if n == 1 else [100 + (160 / (n - 1)) * i for i in range(n)]
-    fig.add_trace(
-        go.Scatterpolar(
-            r=[0.9] * n, theta=angles, mode="markers+text",
-            text=[f"{_pct(v, base):.0f}%" for v in values],
-            marker=dict(size=40, color="white", line=dict(color=colors, width=3)),
-            textfont=dict(color=colors, size=11, family=FONT),
-            hovertext=labels, hoverinfo="text", showlegend=False,
-        )
-    )
+    fig.add_trace(go.Scatterpolar(r=[0.9] * n, theta=angles, mode="markers+text", text=[f"{_pct(v, base):.0f}%" for v in values], marker=dict(size=40, color="white", line=dict(color=colors, width=3)), textfont=dict(color=colors, size=11, family=FONT), hovertext=labels, hoverinfo="text", showlegend=False))
 
     fig.update_layout(
-        height=height,
-        margin=dict(t=10, b=46, l=10, r=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT, color=INK),
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            hole=0.16,
-            radialaxis=dict(visible=False, range=[0, 1.12]),
-            angularaxis=dict(visible=False, rotation=0, direction="counterclockwise"),
-        ),
-        legend=dict(
-            orientation="h", yanchor="top", y=-0.04, xanchor="center", x=0.5,
-            font=dict(size=11), bgcolor="rgba(255,255,255,.6)", bordercolor="#9aaccb", borderwidth=1,
-        ),
-        annotations=[
-            dict(
-                x=0.5, y=0.5, xref="paper", yref="paper",
-                text="<b>REPORT</b>", showarrow=False,
-                font=dict(size=10, color=MUTED),
-            )
-        ],
+        height=height, margin=dict(t=10, b=46, l=10, r=10),
+        paper_bgcolor="rgba(0,0,0,0)", font=dict(family=FONT, color=INK),
+        polar=dict(bgcolor="rgba(0,0,0,0)", hole=0.16, radialaxis=dict(visible=False, range=[0, 1.12]), angularaxis=dict(visible=False, rotation=0, direction="counterclockwise")),
+        legend=dict(orientation="h", yanchor="top", y=-0.04, xanchor="center", x=0.5, font=dict(size=11), bgcolor="rgba(255,255,255,.6)", bordercolor="#9aaccb", borderwidth=1),
+        annotations=[dict(x=0.5, y=0.5, xref="paper", yref="paper", text="<b>REPORT</b>", showarrow=False, font=dict(size=10, color=MUTED))]
     )
     return fig
 
@@ -293,71 +245,21 @@ def tube_chart(labels, values, base, height=320):
     pcts = [_pct(v, base) for v in values]
 
     fig = go.Figure()
-
-    fig.add_trace(
-        go.Bar(
-            x=xs, y=[bg_max] * n, width=0.68,
-            marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#7f93b5", width=3)),
-            hoverinfo="skip", showlegend=False,
-        )
-    )
-    fig.add_trace(
-        go.Bar(
-            x=xs, y=values, width=0.52,
-            marker=dict(color=colors, line=dict(color="rgba(255,255,255,.7)", width=1)),
-            text=[f"{v:,}" for v in values],
-            textposition="inside", insidetextanchor="middle", textangle=-90,
-            textfont=dict(color="white", size=13, family=FONT),
-            customdata=[[lb, p] for lb, p in zip(labels, pcts)],
-            hovertemplate="%{customdata[0]}<br>%{y:,} Pallets (%{customdata[1]:.1f}%)<extra></extra>",
-            showlegend=False,
-        )
-    )
-    fig.add_trace(
-        go.Bar(
-            x=[x - 0.17 for x in xs], y=[v * 0.95 for v in values], width=0.07,
-            marker=dict(color="rgba(255,255,255,0.38)", line=dict(width=0)),
-            hoverinfo="skip", showlegend=False,
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=xs, y=pcts, yaxis="y2", mode="lines+markers",
-            line=dict(color="#5b6b8c", width=2, dash="dash"),
-            marker=dict(size=12, symbol="square", color=colors, line=dict(color="white", width=2)),
-            hovertemplate="%{y:.1f}%<extra></extra>", showlegend=False,
-        )
-    )
+    fig.add_trace(go.Bar(x=xs, y=[bg_max] * n, width=0.68, marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#7f93b5", width=3)), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Bar(x=xs, y=values, width=0.52, marker=dict(color=colors, line=dict(color="rgba(255,255,255,.7)", width=1)), text=[f"{v:,}" for v in values], textposition="inside", insidetextanchor="middle", textangle=-90, textfont=dict(color="white", size=13, family=FONT), customdata=[[lb, p] for lb, p in zip(labels, pcts)], hovertemplate="%{customdata[0]}<br>%{y:,} Pallets (%{customdata[1]:.1f}%)<extra></extra>", showlegend=False))
+    fig.add_trace(go.Scatter(x=xs, y=pcts, yaxis="y2", mode="lines+markers", line=dict(color="#5b6b8c", width=2, dash="dash"), marker=dict(size=12, symbol="square", color=colors, line=dict(color="white", width=2)), hovertemplate="%{y:.1f}%<extra></extra>", showlegend=False))
+    
     lo, hi = min(pcts), max(pcts)
     span = max(hi - lo, 10)
-    annotations = [
-        dict(
-            x=x, y=p, xref="x", yref="y2", text=f"<b>{p:.0f}%</b>",
-            showarrow=False, yshift=28, bgcolor="white",
-            bordercolor="#5f77a6", borderwidth=1.5, borderpad=3,
-            font=dict(size=11, color=INK, family=FONT),
-        )
-        for x, p in zip(xs, pcts)
-    ]
+    annotations = [dict(x=x, y=p, xref="x", yref="y2", text=f"<b>{p:.0f}%</b>", showarrow=False, yshift=28, bgcolor="white", bordercolor="#5f77a6", borderwidth=1.5, borderpad=3, font=dict(size=11, color=INK, family=FONT)) for x, p in zip(xs, pcts)]
 
     fig.update_layout(
-        height=height, barmode="overlay",
-        margin=dict(t=24, b=14, l=14, r=14),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=FONT, color=INK), showlegend=False,
+        height=height, barmode="overlay", margin=dict(t=24, b=14, l=14, r=14),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family=FONT, color=INK), showlegend=False,
         annotations=annotations,
-        xaxis=dict(
-            tickmode="array", tickvals=xs,
-            ticktext=[lb.replace(" ", "<br>", 1) if len(lb) > 12 else lb for lb in labels],
-            tickfont=dict(size=11), range=[-0.6, n - 0.4],
-            showgrid=False, zeroline=False,
-        ),
+        xaxis=dict(tickmode="array", tickvals=xs, ticktext=[lb.replace(" ", "<br>", 1) if len(lb) > 12 else lb for lb in labels], tickfont=dict(size=11), range=[-0.6, n - 0.4], showgrid=False, zeroline=False),
         yaxis=dict(domain=[0, 0.62], range=[0, bg_max], showgrid=False, showticklabels=False, zeroline=False),
-        yaxis2=dict(
-            domain=[0.74, 0.96], range=[lo - span * 0.6, hi + span * 0.9],
-            showgrid=False, showticklabels=False, zeroline=False,
-        ),
+        yaxis2=dict(domain=[0.74, 0.96], range=[lo - span * 0.6, hi + span * 0.9], showgrid=False, showticklabels=False, zeroline=False),
     )
     try:
         fig.update_traces(marker_cornerradius=18, selector=dict(type="bar"))
@@ -367,98 +269,45 @@ def tube_chart(labels, values, base, height=320):
 
 
 def report_table(title, date_str, time_str, items, cols):
-    cells = "".join(
-        f'<div class="report-cell" style="border-top:4px solid {RAINBOW[i % len(RAINBOW)]};">'
-        f'<div class="report-label">{label.replace(chr(10), "<br>")}</div>'
-        f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
-        for i, (label, value, alert) in enumerate(items)
-    )
-    return (
-        f'<div class="report-wrap"><div class="report-head">{title} {date_str}'
-        f' <span class="report-date">{time_str}</span></div>'
-        f'<div class="report-grid" style="grid-template-columns: repeat({cols}, minmax(0, 1fr));">'
-        f"{cells}</div></div>"
-    )
+    cells = "".join(f'<div class="report-cell" style="border-top:4px solid {RAINBOW[i % len(RAINBOW)]};"><div class="report-label">{label.replace(chr(10), "<br>")}</div><div class="report-value{" alert" if alert else ""}">{value}</div></div>' for i, (label, value, alert) in enumerate(items))
+    return f'<div class="report-wrap"><div class="report-head">{title} {date_str} <span class="report-date">{time_str}</span></div><div class="report-grid" style="grid-template-columns: repeat({cols}, minmax(0, 1fr));">{cells}</div></div>'
 
 
 def chart_card_title(title, sub=""):
     sub_html = f'<div class="chart-sub">{sub}</div>' if sub else ""
-    st.markdown(
-        f'<div class="chart-title">{title}</div>{sub_html}',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="chart-title">{title}</div>{sub_html}', unsafe_allow_html=True)
 
 
 # --- Sidebar เมนูเลือกชีตรายงาน ---
-NAV = [
-    "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
-    "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
-]
+NAV = ["สรุปงานรับและงานค้างส่ง(ย้อนหลัง)", "สถานการณ์การรับ(กะเช้าปัจจุบัน)"]
 NAV_ICON = {NAV[0]: "🕘", NAV[1]: "🌅"}
 
-st.sidebar.markdown(
-    '<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div>'
-    '<div class="sb-name">DCSB Warehouse</div>'
-    '<div class="sb-sub">REPORT SYSTEM</div></div></div>',
-    unsafe_allow_html=True,
-)
+st.sidebar.markdown('<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div><div class="sb-name">DCSB Warehouse</div><div class="sb-sub">REPORT SYSTEM</div></div></div>', unsafe_allow_html=True)
 st.sidebar.markdown('<div class="sb-label">เมนูรายงาน</div>', unsafe_allow_html=True)
-sheet_selection = st.sidebar.radio(
-    "เลือกชีต:",
-    NAV,
-    format_func=lambda s: f"{NAV_ICON[s]}  {s}",
-    label_visibility="collapsed",
-)
+sheet_selection = st.sidebar.radio("เลือกชีต:", NAV, format_func=lambda s: f"{NAV_ICON[s]}  {s}", label_visibility="collapsed")
 
 st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
 if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
-    morning_date = st.sidebar.date_input(
-        "ประจำวันที่ (กะเช้าปัจจุบัน)",
-        value=pd.to_datetime("2026-11-13"),
-        key="m_date_input",
-    )
+    morning_date = st.sidebar.date_input("ประจำวันที่ (กะเช้าปัจจุบัน)", value=pd.to_datetime("2026-11-13"), key="m_date_input")
 else:
-    hist_date = st.sidebar.date_input(
-        "ประจำวันที่ (ย้อนหลัง)",
-        value=pd.to_datetime("2026-11-12"),
-        key="h_date_input",
-    )
+    hist_date = st.sidebar.date_input("ประจำวันที่ (ย้อนหลัง)", value=pd.to_datetime("2026-11-12"), key="h_date_input")
 
-st.sidebar.markdown(
-    '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
-)
-uploaded_rp01_16 = st.sidebar.file_uploader(
-    "1. อัปโหลดรายงาน RP01 (16.10 น.)", type=["xlsx", "xls", "csv"], key="rp01_16"
-)
-uploaded_rp01_22 = st.sidebar.file_uploader(
-    "2. อัปโหลดรายงาน RP01 (ต่อท้าย 22.00)", type=["xlsx", "xls", "csv"], key="rp01_22"
-)
-uploaded_rp03 = st.sidebar.file_uploader(
-    "3. อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03"
-)
-uploaded_rp42 = st.sidebar.file_uploader(
-    "4. อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42"
-)
+st.sidebar.markdown('<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True)
+uploaded_rp01_16 = st.sidebar.file_uploader("1. อัปโหลดรายงาน RP01 (16.10 น.)", type=["xlsx", "xls", "csv"], key="rp01_16")
+uploaded_rp01_22 = st.sidebar.file_uploader("2. อัปโหลดรายงาน RP01 (ต่อท้าย 22.00)", type=["xlsx", "xls", "csv"], key="rp01_22")
+uploaded_rp03 = st.sidebar.file_uploader("3. อัปโหลดรายงาน RP03", type=["xlsx", "xls", "csv"], key="rp03")
+uploaded_rp42 = st.sidebar.file_uploader("4. อัปโหลดรายงาน RP42", type=["xlsx", "xls", "csv"], key="rp42")
 
-# ประมวลผล Auto Import จากไฟล์ที่อัปโหลด
-auto_total_recv = parse_pallets_from_file(uploaded_rp01_16, start_row=4)
-auto_complete = parse_pallets_from_file(uploaded_rp42, start_row=0)
-auto_extra = parse_rp03_extra(uploaded_rp03, uploaded_rp01_22)
-auto_not_billed = parse_pallets_from_file(uploaded_rp01_22, start_row=4)
+# ประมวลผล Auto Import จากไฟล์ที่อัปโหลด (ใช้ start_row=4 สำหรับ RP01 ตามกฎ)
+auto_total_recv = parse_pallets_flexible(uploaded_rp01_16, start_row=4)
+auto_complete = parse_pallets_flexible(uploaded_rp42, start_row=0)
+auto_extra = parse_rp03_extra(uploaded_rp03)
+auto_not_billed = parse_pallets_flexible(uploaded_rp01_22, start_row=4)
 
-_chips = "".join(
-    f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
-    for n, f in (("RP01 16:10", uploaded_rp01_16), ("RP01 22:00", uploaded_rp01_22), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
-)
+_chips = "".join(f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>' for n, f in (("RP01 16:10", uploaded_rp01_16), ("RP01 22:00", uploaded_rp01_22), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42)))
 st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
-st.markdown(
-    '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
-    '<div class="hero-title">📊 รายงานการรับสินค้าประจำวัน</div>'
-    '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
-    '<div class="hero-bar"></div></div>',
-    unsafe_allow_html=True,
-)
+st.markdown('<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div><div class="hero-title">📊 รายงานการรับสินค้าประจำวัน</div><div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div><div class="hero-bar"></div></div>', unsafe_allow_html=True)
 
 # =========================================================================
 # ชีตที่ 1: สถานการณ์การรับ (กะเช้าปัจจุบัน)
@@ -480,8 +329,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     sup_morning_missing = st.session_state.get("sup_morning_missing", 1445)
     pct_remaining = (total_remaining / inv_all * 100) if inv_all > 0 else 40.03
 
-    st.markdown(
-        f"""
+    st.markdown(f"""
     <div class="focus-grid">
         <div class="focus-card">
             <div class="focus-label">📦 ยอดงาน Complete รับกะดึก (00.00-06.00)</div>
@@ -494,9 +342,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             <div class="focus-unit">ยอดงานค้างส่งสูงสุดที่ต้องติดตามด่วน</div>
         </div>
     </div>
-    """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True)
     report_values = [
@@ -515,92 +361,40 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า", f"{sup_morning_missing:,}", False),
         ("(%) สรุปงานค้างรับคงเหลือ", f"{pct_remaining:.2f}%", True),
     ]
-    st.markdown(
-        report_table(
-            "รายงานการรับสินค้าประจำวันที่",
-            morning_date.strftime("%d/%m/%Y"),
-            "(00.00 - 06.00 น.)",
-            report_values,
-            7,
-        ),
-        unsafe_allow_html=True,
-    )
+    st.markdown(report_table("รายงานการรับสินค้าประจำวันที่", morning_date.strftime("%d/%m/%Y"), "(00.00 - 06.00 น.)", report_values, 7), unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">กราฟสรุปภาพรวม</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3, gap="small")
     with c1:
         with st.container(key="card_radial_1"):
             chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "% เทียบยอดประมาณการรับทั้งหมด")
-            st.plotly_chart(
-                radial_chart(
-                    ["รับกะดึก", "รับกะเช้า", "คงเหลือทั้งหมด"],
-                    [night_received, morning_received, total_remaining],
-                    base=inv_all,
-                ),
-                use_container_width=True,
-            )
+            st.plotly_chart(radial_chart(["รับกะดึก", "รับกะเช้า", "คงเหลือทั้งหมด"], [night_received, morning_received, total_remaining], base=inv_all), use_container_width=True)
     with c2:
         with st.container(key="card_radial_2"):
             chart_card_title("ยอดงาน Complete รับกะดึก", "(00.00-06.00) แยกตามประเภทงาน")
-            st.plotly_chart(
-                radial_chart(
-                    ["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"],
-                    [work_night, work_morning, extra_work],
-                ),
-                use_container_width=True,
-            )
+            st.plotly_chart(radial_chart(["งานกะดึก", "งานกะเช้า", "งานนอกรอบ"], [work_night, work_morning, extra_work]), use_container_width=True)
     with c3:
         with st.container(key="card_radial_3"):
             chart_card_title("สรุปงานรับคงเหลือทั้งหมด", "หน่วย Pallets แยกตามสถานะ")
-            st.plotly_chart(
-                radial_chart(
-                    ["กำลังลงสินค้า", "รอลงสินค้า", "Supplier กะดึก", "Supplier กะเช้า"],
-                    [recv_start, in_transit, sup_night_missing, sup_morning_missing],
-                ),
-                use_container_width=True,
-            )
+            st.plotly_chart(radial_chart(["กำลังลงสินค้า", "รอลงสินค้า", "Supplier กะดึก", "Supplier กะเช้า"], [recv_start, in_transit, sup_night_missing, sup_morning_missing]), use_container_width=True)
 
     with st.expander("✏️ ปรับปรุงข้อมูลรายงานประจำวัน", expanded=False):
         col_a, col_b, col_c = st.columns(3, gap="small")
         with col_a:
-            inv_all = st.number_input(
-                "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
-            )
-            night_received = st.number_input(
-                "ยอดงานรับกะดึก (ทั้งหมด)", value=night_received, step=1, key="night_received"
-            )
-            morning_received = st.number_input(
-                "ยอดงานรับกะเช้า (ทั้งหมด)", value=morning_received, step=1, key="morning_received"
-            )
+            inv_all = st.number_input("ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all")
+            night_received = st.number_input("ยอดงานรับกะดึก (ทั้งหมด)", value=night_received, step=1, key="night_received")
+            morning_received = st.number_input("ยอดงานรับกะเช้า (ทั้งหมด)", value=morning_received, step=1, key="morning_received")
         with col_b:
-            complete_night = st.number_input(
-                "ยอดงาน Complete รับกะดึก", value=complete_night, step=1, key="complete_night"
-            )
-            work_night = st.number_input(
-                "งาน Complete - กะดึก", value=work_night, step=1, key="work_night"
-            )
-            work_morning = st.number_input(
-                "งาน Complete - กะเช้า", value=work_morning, step=1, key="work_morning"
-            )
-            extra_work = st.number_input(
-                "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work"
-            )
+            complete_night = st.number_input("ยอดงาน Complete รับกะดึก", value=complete_night, step=1, key="complete_night")
+            work_night = st.number_input("งาน Complete - กะดึก", value=work_night, step=1, key="work_night")
+            work_morning = st.number_input("งาน Complete - กะเช้า", value=work_morning, step=1, key="work_morning")
+            extra_work = st.number_input("งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work")
         with col_c:
-            total_remaining = st.number_input(
-                "สรุปงานรับคงเหลือทั้งหมด", value=total_remaining, step=1, key="total_remaining"
-            )
-            recv_start = st.number_input(
-                "กำลังลงสินค้า (Receiving Start)", value=recv_start, step=1, key="recv_start"
-            )
-            in_transit = st.number_input(
-                "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit"
-            )
-            sup_night_missing = st.number_input(
-                "Supplier ยังไม่มาส่งกะดึก", value=sup_night_missing, step=1, key="sup_night_missing"
-            )
-            sup_morning_missing = st.number_input(
-                "Supplier ยังไม่มาส่งกะเช้า", value=sup_morning_missing, step=1, key="sup_morning_missing"
-            )
+            total_remaining = st.number_input("สรุปงานรับคงเหลือทั้งหมด", value=total_remaining, step=1, key="total_remaining")
+            recv_start = st.number_input("กำลังลงสินค้า (Receiving Start)", value=recv_start, step=1, key="recv_start")
+            in_transit = st.number_input("รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit")
+            sup_night_missing = st.number_input("Supplier ยังไม่มาส่งกะดึก", value=sup_night_missing, step=1, key="sup_night_missing")
+            sup_morning_missing = st.number_input("Supplier ยังไม่มาส่งกะเช้า", value=sup_morning_missing, step=1, key="sup_morning_missing")
 
 # =========================================================================
 # ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
@@ -608,7 +402,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 else:
     hist_inv = st.session_state.get("hist_inv", 6126)
     
-    # ใช้งานค่าที่อัปโหลดอัตโนมัติหากมีไฟล์ ถ้าไม่มีให้ดึงจาก Session หรือค่าเริ่มต้น
+    # ใช้งานข้อมูลจาก Auto-Import หากอัปโหลดไฟล์สำเร็จ หรือดึงค่าสำรอง/Session
     hist_total_recv = auto_total_recv if auto_total_recv is not None else st.session_state.get("hist_total_recv", 5904)
     hist_complete = auto_complete if auto_complete is not None else st.session_state.get("hist_complete", 5722)
     hist_extra = auto_extra if auto_extra is not None else st.session_state.get("hist_extra", 138)
@@ -617,15 +411,11 @@ else:
     hist_delayed = st.session_state.get("hist_delayed", 0)
     hist_not_po = st.session_state.get("hist_not_po", 73)
 
-    # คำนวณตามกฎข้อ 10: งานไม่ได้รับทั้งหมด = ส่งไม่ครบตาม PO + ยังไม่ยื่นบิล
+    # คำนวณงานไม่ได้รับทั้งหมด = ส่งไม่ครบตาม PO + ยังไม่ยื่นบิล
     hist_not_recv = hist_not_po + hist_not_billed
-    hist_pct_not_recv = (
-        (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
-    )
+    hist_pct_not_recv = (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
 
-    st.markdown(
-        '<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True
-    )
+    st.markdown('<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True)
     hist_report_values = [
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
@@ -637,74 +427,29 @@ else:
         ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
         ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
     ]
-    st.markdown(
-        report_table(
-            "สรุปงานรับและงานค้างส่ง ประจำวันที่",
-            hist_date.strftime("%d/%m/%Y"),
-            "(00.00-22.00 น.)",
-            hist_report_values,
-            5,
-        ),
-        unsafe_allow_html=True,
-    )
+    st.markdown(report_table("สรุปงานรับและงานค้างส่ง ประจำวันที่", hist_date.strftime("%d/%m/%Y"), "(00.00-22.00 น.)", hist_report_values, 5), unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">กราฟสรุปภาพรวม</div>', unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns([1.35, 1], gap="small")
     with col_chart1:
         with st.container(key="card_hist_tube"):
-            chart_card_title(
-                "📊 สรุปภาพรวมงานรับและงานค้างส่ง",
-                "เส้นประแสดง % เทียบงานรับทั้งหมด (16.10 น.)",
-            )
-            st.plotly_chart(
-                tube_chart(
-                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับ"],
-                    [hist_total_recv, hist_complete, hist_extra, hist_not_recv],
-                    base=hist_total_recv,
-                    height=320,
-                ),
-                use_container_width=True,
-            )
+            chart_card_title("📊 สรุปภาพรวมงานรับและงานค้างส่ง", "เส้นประแสดง % เทียบงานรับทั้งหมด (16.10 น.)")
+            st.plotly_chart(tube_chart(["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับ"], [hist_total_recv, hist_complete, hist_extra, hist_not_recv], base=hist_total_recv, height=320), use_container_width=True)
     with col_chart2:
         with st.container(key="card_hist_radial"):
-            chart_card_title(
-                "🚨 วิเคราะห์สาเหตุงานไม่ได้รับ",
-                "% เทียบงานไม่ได้รับทั้งหมด",
-            )
-            st.plotly_chart(
-                radial_chart(
-                    ["ยังไม่ยื่นบิล", "ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
-                    [hist_not_billed, hist_not_po, hist_delayed],
-                    base=hist_not_recv,
-                    height=320,
-                ),
-                use_container_width=True,
-            )
+            chart_card_title("🚨 วิเคราะห์สาเหตุงานไม่ได้รับ", "% เทียบงานไม่ได้รับทั้งหมด")
+            st.plotly_chart(radial_chart(["ยังไม่ยื่นบิล", "ส่งไม่ครบตาม PO", "เลื่อนส่ง"], [hist_not_billed, hist_not_po, hist_delayed], base=hist_not_recv, height=320), use_container_width=True)
 
     with st.expander("✏️ ปรับปรุงข้อมูลสรุปงานรับและงานค้างส่ง(ย้อนหลัง)", expanded=False):
         hc1, hc2, hc3, hc4 = st.columns(4, gap="small")
         with hc1:
-            hist_inv = st.number_input(
-                "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
-            )
-            hist_total_recv = st.number_input(
-                "งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv"
-            )
+            hist_inv = st.number_input("ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv")
+            hist_total_recv = st.number_input("งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv")
         with hc2:
-            hist_complete = st.number_input(
-                "งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete"
-            )
-            hist_extra = st.number_input(
-                "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
-            )
+            hist_complete = st.number_input("งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete")
+            hist_extra = st.number_input("งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra")
         with hc3:
-            hist_delayed = st.number_input(
-                "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
-            )
-            hist_not_po = st.number_input(
-                "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
-            )
+            hist_delayed = st.number_input("เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed")
+            hist_not_po = st.number_input("ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po")
         with hc4:
-            hist_not_billed = st.number_input(
-                "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
-            )
+            hist_not_billed = st.number_input("ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed")
