@@ -47,16 +47,16 @@ def _sum_numeric(frame, name, mask=None):
 
 
 def _extra_complete(rp01_22, rp03):
-    """Sum RP03 case qty for purchase orders absent from the RP01 22.00 report."""
-    left = _column(rp01_22, "P/O")
-    right = _column(rp03, "Purchase Order")
-    left_keys = {_norm_key(v) for v in rp01_22[left] if _norm_key(v)}
-    right_keys = rp03[right].map(_norm_key)
-    case_col = _column(rp03, "Total Case Qty (iLPNs)")
-    qty = pd.to_numeric(rp03[case_col], errors="coerce").fillna(0)
-    unmatched = ~right_keys.isin(left_keys)
-    overlap = len(set(right_keys) & left_keys)
-    return float(qty[unmatched].sum()), left, right, overlap
+    """Sum only RP03 case quantities absent from RP01 Pallets Qty (VLOOKUP #N/A)."""
+    rp01_col = _column(rp01_22, "Pallets Qty")
+    rp03_col = _column(rp03, "Total Case Qty (iLPNs)")
+    rp01_qty = pd.to_numeric(rp01_22[rp01_col], errors="coerce").dropna()
+    rp03_qty = pd.to_numeric(rp03[rp03_col], errors="coerce")
+    unmatched = rp03_qty.notna() & ~rp03_qty.isin(set(rp01_qty.tolist()))
+    missing_count = int(unmatched.sum())
+    total = float(rp03_qty[unmatched].sum())
+    total = int(total) if total.is_integer() else total
+    return total, rp01_col, rp03_col, missing_count
 
 
 def _load_imported_metrics(files):
@@ -80,13 +80,10 @@ def _load_imported_metrics(files):
             d03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Purchase Order"])
             extra, left, right, overlap = _extra_complete(d22, d03)
             result["hist_extra"] = extra
-            if overlap:
-                result["extra_join"] = f"จับคู่ {left} ↔ {right} ได้ {overlap:,} รหัส"
-            else:
-                result["extra_join"] = (
-                    "ไม่พบเลข PO ตรงกันระหว่าง RP01 22.00 กับ RP03 "
-                    "จึงนับทุกแถว RP03 ที่มี Total Case Qty เป็นงานนอกรอบ"
-                )
+            result["extra_join"] = (
+                f"VLOOKUP {left} (RP01 22.00) ↔ {right} (RP03): "
+                f"พบค่า #N/A {overlap:,} แถว นับเฉพาะแถวที่ไม่ตรงกัน"
+            )
         return result, None
     except Exception as exc:
         return result, str(exc)
@@ -478,10 +475,7 @@ for metric, value in imported.items():
 if import_error:
     st.sidebar.error(f"อ่านไฟล์ไม่สำเร็จ: {import_error}")
 if imported.get("extra_join"):
-    if "จับคู่" in imported["extra_join"]:
-        st.sidebar.success(imported["extra_join"])
-    else:
-        st.sidebar.warning(imported["extra_join"])
+    st.sidebar.info(imported["extra_join"])
 _chips = "".join(
     f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
     for n, f in (("RP01 16.10", uploaded_rp01_1610), ("RP01 22.00", uploaded_rp01_2200), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
