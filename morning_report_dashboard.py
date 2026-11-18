@@ -416,7 +416,7 @@ def _autosave_morning_report():
 
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
 st.set_page_config(
-    page_title="DCSB Warehouse Morning Report",
+    page_title="DCSB Distribution Center Morning Report",
     page_icon="🟦",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -768,7 +768,7 @@ NAV_ICON = {NAV[0]: "🌙", NAV[1]: "☀️"}
 
 st.sidebar.markdown(
     '<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div>'
-    '<div class="sb-name">DCSB Warehouse</div>'
+    '<div class="sb-name">DCSB Distribution Center</div>'
     '<div class="sb-sub">REPORT SYSTEM</div></div></div>',
     unsafe_allow_html=True,
 )
@@ -983,7 +983,7 @@ _chips = "".join(
 st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
+    '<div class="hero"><div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
     f'<div class="hero-title">{NAV_ICON[sheet_selection]} {sheet_selection}</div>'
     '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
     '<div class="hero-bar"></div></div>',
