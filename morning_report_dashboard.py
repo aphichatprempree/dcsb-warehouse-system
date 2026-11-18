@@ -711,30 +711,30 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 if sheet_selection == NAV[1]:
-    RAINBOW = ["#62b8df", "#80cbbb", "#efc767", "#f29a78", "#91a8df", "#a9cf86", "#e78db1", "#9bb8c5"]
+    RAINBOW = ["#e5ad4d", "#e68273", "#9bbec8", "#9fbea0", "#edc96f", "#c7937c", "#c5a6a0", "#8da39d"]
     st.markdown(
         """
 <style>
 body:has(.morning-theme) {
-    --ink:#344b5c; --muted:#78909d; --blue:#3399c4; --blue2:#70c2e2;
-    --rose:#dc7180; --grad:linear-gradient(135deg,#79c9e4,#72cdb9);
-    --line:#c9e0e8; --line-strong:#a9d1df;
-    --sh:0 8px 22px rgba(117,161,177,.13);
-    --sh-sm:0 4px 12px rgba(117,161,177,.12);
-    --sh-in:inset 0 1px 3px rgba(117,161,177,.10);
+    --ink:#514943; --muted:#897d72; --blue:#d49b3e; --blue2:#e2ad52;
+    --rose:#cd7069; --grad:linear-gradient(135deg,#edc45d,#e99b68);
+    --line:#eadcc5; --line-strong:#dbc69f;
+    --sh:0 8px 22px rgba(153,126,86,.12);
+    --sh-sm:0 4px 12px rgba(153,126,86,.10);
+    --sh-in:inset 0 1px 3px rgba(153,126,86,.09);
 }
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#f7fbfc,#edf6f8); }
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#fbf9f3,#f5efe5); }
 body:has(.morning-theme) .hero,
 body:has(.morning-theme) .focus-card,
 body:has(.morning-theme) .report-wrap,
 body:has(.morning-theme) [class*="st-key-card"],
-body:has(.morning-theme) [data-testid="stExpander"] { background:linear-gradient(145deg,#ffffff,#f5fafb); }
-body:has(.morning-theme) .report-cell { background:#ffffff; }
-body:has(.morning-theme) [data-testid="stSidebar"] { background:linear-gradient(180deg,#f7fbfc,#edf5f7); }
+body:has(.morning-theme) [data-testid="stExpander"] { background:linear-gradient(145deg,#fffefa,#faf5eb); }
+body:has(.morning-theme) .report-cell { background:#fffefa; }
+body:has(.morning-theme) [data-testid="stSidebar"] { background:linear-gradient(180deg,#faf8f1,#f2ecdf); }
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:var(--grad); border-color:#72bfd4 !important; box-shadow:0 5px 13px rgba(100,177,194,.2); }
-body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(96,184,202,.2); }
-body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(96,184,202,.18); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { border-color:#dfb95f !important; box-shadow:0 5px 13px rgba(197,155,75,.18); }
+body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(216,165,78,.22); }
+body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(216,165,78,.18); }
 .hero { padding:8px 18px 7px; margin-bottom:4px; border-radius:20px; }
 .hero-kicker { font-size:.58rem; }
 .hero-title { font-size:1.25rem; margin:0; }
