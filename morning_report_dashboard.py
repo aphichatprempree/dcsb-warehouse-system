@@ -258,7 +258,7 @@ def _autosave_morning_report():
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
 st.set_page_config(
     page_title="DCSB Warehouse Morning Report",
-    page_icon="📦",
+    page_icon="🟦",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -782,7 +782,7 @@ st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=Tr
 
 st.markdown(
     '<div class="hero"><div class="hero-kicker">DCSB WAREHOUSE · REPORT SYSTEM</div>'
-    '<div class="hero-title">📊 รายงานการรับสินค้าประจำวัน</div>'
+    f'<div class="hero-title">{NAV_ICON[sheet_selection]} {sheet_selection}</div>'
     '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
     '<div class="hero-bar"></div></div>',
     unsafe_allow_html=True,
