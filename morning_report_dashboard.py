@@ -133,6 +133,74 @@ def _report_date_from_frame(frame):
     return dates.dt.date.value_counts().index[0]
 
 
+def _date_value(value):
+    if pd.isna(value):
+        return None
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = str(value).strip()
+    patterns = (
+        r"\d{4}-\d{1,2}-\d{1,2}",
+        r"\d{1,2}/\d{1,2}/\d{2,4}",
+        r"\d{1,2}/[A-Za-z]{3}/\d{4}",
+        r"[A-Za-z]{3}\s+\d{1,2},\s*\d{4}",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            parsed = pd.to_datetime(match.group(0), dayfirst=True, errors="coerce")
+            if not pd.isna(parsed):
+                return parsed.date()
+    return None
+
+
+def _report_metadata_date(upload):
+    """Read the export/report date from the preamble above a report's table."""
+    if upload is None:
+        return None
+    upload.seek(0)
+    raw = pd.read_excel(upload, header=None, dtype=object, nrows=12)
+    upload.seek(0)
+    for _, row in raw.iterrows():
+        values = list(row)
+        for index, value in enumerate(values):
+            if "report date" not in str(value).strip().casefold():
+                continue
+            parsed = _date_value(value)
+            if parsed:
+                return parsed
+            for next_value in values[index + 1:]:
+                parsed = _date_value(next_value)
+                if parsed:
+                    return parsed
+    return None
+
+
+def _report_date_warnings(files, rp01_date):
+    if rp01_date is None:
+        if files.get("rp01_1610") is not None or files.get("rp01_2200") is not None:
+            return ["อ่านวันที่จาก Delivery Date ใน RP01 ไม่ได้ จึงยังตรวจสอบวันที่ของ RP03 และ RP42 ไม่ได้"]
+        return []
+    warnings = []
+    for key, label in (("rp03", "RP03"), ("rp42", "RP42")):
+        upload = files.get(key)
+        if upload is None:
+            continue
+        try:
+            source_date = _report_metadata_date(upload)
+        except Exception:
+            source_date = None
+        if source_date is None:
+            warnings.append(f"ไม่พบ Report Date ใน {label} ({upload.name}) จึงตรวจสอบวันเทียบกับ RP01 ไม่ได้")
+        elif source_date != rp01_date:
+            warnings.append(
+                f"วันที่รายงานไม่ตรงกัน: RP01 {rp01_date:%d/%m/%Y} แต่ {label} {source_date:%d/%m/%Y} ({upload.name})"
+            )
+    return warnings
+
+
 def _extra_complete(rp01_22, rp03):
     """Sum only RP03 case quantities absent from RP01 Pallets Qty (VLOOKUP #N/A)."""
     rp01_col = _column(rp01_22, "Pallets Qty")
@@ -822,6 +890,7 @@ if sheet_selection == NAV[1]:
     imported, import_error = _load_morning_metrics(_uploaded_files)
 else:
     imported, import_error = _load_imported_metrics(_uploaded_files)
+report_date_warnings = _report_date_warnings(_uploaded_files, imported.get("report_date"))
 _uploads = (uploaded_rp01_1610, uploaded_rp01_2200, uploaded_rp03, uploaded_rp42)
 _import_signature = hashlib.sha256(
     "|".join(
@@ -920,6 +989,8 @@ st.markdown(
     '<div class="hero-bar"></div></div>',
     unsafe_allow_html=True,
 )
+for warning in report_date_warnings:
+    st.warning(warning)
 
 # =========================================================================
 # ชีตที่ 1: สถานการณ์การรับ (กะเช้าปัจจุบัน)
