@@ -659,16 +659,17 @@ def tube_chart(labels, values, base, height=320):
     return fig
 
 
-def report_table(title, date_str, time_str, items, cols, compact=False):
+def report_table(title, date_str, time_str, items, cols, compact=False, accent_colors=None):
     rendered_cells = []
     metric_index = 0
+    colors = accent_colors or RAINBOW
     for item in items:
         if len(item) == 2 and item[0] == "group":
             rendered_cells.append(f'<div class="report-group">{item[1]}</div>')
             continue
         label, value, alert = item
         rendered_cells.append(
-            f'<div class="report-cell" style="border-top:4px solid {RAINBOW[metric_index % len(RAINBOW)]};">'
+            f'<div class="report-cell" style="border-top:4px solid {colors[metric_index % len(colors)]};">'
             f'<div class="report-label">{label.replace(chr(10), "<br>")}</div>'
             f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
         )
@@ -980,6 +981,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             report_values,
             6,
             compact=True,
+            accent_colors=["#df535d", "#e34e87", "#ed6b9d", "#ee806f", "#f08d50", "#f0a844", "#edc45d"],
         ),
         unsafe_allow_html=True,
     )
