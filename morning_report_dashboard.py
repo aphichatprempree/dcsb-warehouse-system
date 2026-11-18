@@ -432,6 +432,12 @@ RAINBOW = [
 INK = "#2d3650"
 MUTED = "#8590a6"
 FONT = "IBM Plex Sans Thai, sans-serif"
+CHART_TRACK = "rgba(200,209,222,0.55)"
+CHART_INNER = "rgba(255,255,255,0.7)"
+CHART_GAP = "#eef2f8"
+CHART_LEGEND_BORDER = "#9aaccb"
+BAR_TEXT = "white"
+BUBBLE_TEXT = None
 
 st.markdown(
     """
@@ -576,14 +582,14 @@ def radial_chart(labels, values, base=None, height=300):
     fig.add_trace(
         go.Barpolar(
             r=[1.12], theta=[180], width=[180],
-            marker=dict(color="rgba(200,209,222,0.55)", line=dict(width=0)),
+            marker=dict(color=CHART_TRACK, line=dict(width=0)),
             hoverinfo="skip", showlegend=False,
         )
     )
     fig.add_trace(
         go.Barpolar(
             r=[0.72], theta=[180], width=[180],
-            marker=dict(color="rgba(255,255,255,0.7)", line=dict(width=0)),
+            marker=dict(color=CHART_INNER, line=dict(width=0)),
             hoverinfo="skip", showlegend=False,
         )
     )
@@ -594,7 +600,7 @@ def radial_chart(labels, values, base=None, height=300):
         fig.add_trace(
             go.Barpolar(
                 r=[r], theta=[center], width=[width], name=lb,
-                marker=dict(color=colors[i], line=dict(color="#eef2f8", width=2)),
+                marker=dict(color=colors[i], line=dict(color=CHART_GAP, width=2)),
                 hovertemplate=f"{lb}<br>{v:,} Pallets<extra></extra>",
             )
         )
@@ -602,7 +608,7 @@ def radial_chart(labels, values, base=None, height=300):
             go.Scatterpolar(
                 r=[r - 0.12], theta=[center], mode="text",
                 text=[f"{v:,}"],
-                textfont=dict(color="white", size=13, family=FONT),
+                textfont=dict(color=BAR_TEXT, size=13, family=FONT),
                 hoverinfo="skip", showlegend=False,
             )
         )
@@ -613,7 +619,7 @@ def radial_chart(labels, values, base=None, height=300):
             r=[0.9] * n, theta=angles, mode="markers+text",
             text=[f"{_pct(v, base):.0f}%" for v in values],
             marker=dict(size=40, color="white", line=dict(color=colors, width=3)),
-            textfont=dict(color=colors, size=11, family=FONT),
+            textfont=dict(color=BUBBLE_TEXT or colors, size=11, family=FONT),
             hovertext=labels, hoverinfo="text", showlegend=False,
         )
     )
@@ -631,7 +637,7 @@ def radial_chart(labels, values, base=None, height=300):
         ),
         legend=dict(
             orientation="h", yanchor="top", y=-0.04, xanchor="center", x=0.5,
-            font=dict(size=11), bgcolor="rgba(255,255,255,.6)", bordercolor="#9aaccb", borderwidth=1,
+            font=dict(size=11), bgcolor="rgba(255,255,255,.6)", bordercolor=CHART_LEGEND_BORDER, borderwidth=1,
         ),
         annotations=[
             dict(
@@ -737,7 +743,7 @@ def report_table(title, date_str, time_str, items, cols, compact=False, accent_c
             continue
         label, value, alert = item
         rendered_cells.append(
-            f'<div class="report-cell" style="border-top:4px solid {colors[metric_index % len(colors)]};">'
+            f'<div class="report-cell tone{metric_index % len(colors)}" style="border-top:4px solid {colors[metric_index % len(colors)]};">'
             f'<div class="report-label">{label.replace(chr(10), "<br>")}</div>'
             f'<div class="report-value{" alert" if alert else ""}">{value}</div></div>'
         )
@@ -781,61 +787,106 @@ sheet_selection = st.sidebar.radio(
 )
 if sheet_selection == NAV[1]:
     RAINBOW = ["#83c89d", "#8eb7df", "#aa94d0", "#f1bd69", "#e789a9", "#efd479", "#e99c82", "#83c7c1"]
+    CHART_TRACK = "rgba(236,239,240,0.9)"
+    CHART_INNER = "rgba(255,255,255,0.95)"
+    CHART_GAP = "#ffffff"
+    CHART_LEGEND_BORDER = "#eceff0"
+    BAR_TEXT = "#1f2527"
+    BUBBLE_TEXT = "#1f2527"
+    INK, MUTED = "#1f2527", "#8a9296"
     st.markdown(
         """
 <style>
 body:has(.morning-theme) {
-    --ink:#30363a; --muted:#7e878b; --blue:#7197bd; --blue2:#94b6d3;
-    --rose:#d77e88; --grad:linear-gradient(120deg,#c9e8d2,#f5e2b5);
-    --line:#e8edef; --line-strong:#dce4e6;
-    --sh:0 7px 20px rgba(61,79,73,.07);
-    --sh-sm:0 3px 10px rgba(61,79,73,.06);
-    --sh-in:inset 0 1px 3px rgba(61,79,73,.05);
+    --ink:#1f2527; --muted:#8a9296; --blue:#5b8fc0; --blue2:#8ab4d8;
+    --rose:#e0707f; --grad:linear-gradient(120deg,#cdeed7,#f7e6bd);
+    --line:#eceff0; --line-strong:#e8ecee;
+    --sh:0 1px 2px rgba(31,37,39,.03), 0 10px 28px rgba(31,37,39,.05);
+    --sh-sm:0 1px 2px rgba(31,37,39,.03), 0 4px 14px rgba(31,37,39,.04);
+    --sh-in:none;
 }
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#ffffff; }
-body:has(.morning-theme) .hero,
-body:has(.morning-theme) .focus-card,
-body:has(.morning-theme) .report-wrap,
-body:has(.morning-theme) [class*="st-key-card"],
-body:has(.morning-theme) [data-testid="stExpander"] { background:#ffffff; }
-body:has(.morning-theme) .report-cell { background:#ffffff; }
-body:has(.morning-theme) [data-testid="stSidebar"] { background:#ffffff; border-right:1px solid #edf0f1; box-shadow:4px 0 18px rgba(48,59,55,.035); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:#eef6f0; border-color:#dcebe0 !important; box-shadow:none; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#52715d; }
-body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #e8edef; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
-body:has(.morning-theme) .sb-name { color:#30363a; }
-body:has(.morning-theme) .sb-sub { color:#8a9296; }
-body:has(.morning-theme) .sb-logo { background:#7eae8b; border-color:#719d7b; box-shadow:none; }
-body:has(.morning-theme) .sb-label { color:#84908b; }
-body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(119,168,139,.16); }
-body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(119,168,139,.14); }
-body:has(.morning-theme) .report-wrap { border-width:1px; }
-body:has(.morning-theme) .report-cell { box-shadow:0 2px 8px rgba(54,40,83,.06); }
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#fcfcfc; }
+
+/* hero: left-aligned greeting, no card */
+body:has(.morning-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:6px 4px 2px; margin:0 0 4px; border-radius:0; }
+body:has(.morning-theme) .hero-kicker { color:var(--muted); font-size:.62rem; font-weight:500; letter-spacing:.14em; }
+body:has(.morning-theme) .hero-title { color:var(--ink); font-size:1.85rem; font-weight:700; letter-spacing:-.025em; margin:2px 0 0; }
+body:has(.morning-theme) .hero-subtitle { color:var(--muted); font-size:.82rem; }
+body:has(.morning-theme) .hero-bar { display:none; }
+body:has(.morning-theme) .section-title { border-bottom:0; font-size:.95rem; margin:12px 0 4px; padding-bottom:0; }
+body:has(.morning-theme) .section-title::before { width:8px; height:8px; border-radius:50%; background:#83c89d; box-shadow:none; }
+
+/* focus cards: pastel gradient */
+body:has(.morning-theme) .focus-card { background:linear-gradient(150deg,#d9f1e1 0%,#f6fbf8 72%); border:1px solid #e2efe6; border-radius:22px; box-shadow:var(--sh); padding:12px 20px 11px 22px; }
+body:has(.morning-theme) .focus-card::before { display:none; }
+body:has(.morning-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 70%); pointer-events:none; }
+body:has(.morning-theme) .focus-card .focus-value { color:var(--ink); }
+body:has(.morning-theme) .focus-card.alert { background:linear-gradient(150deg,#fde3e8 0%,#fff6f2 72%); border-color:#f6dfe3; }
+body:has(.morning-theme) .focus-card.alert .focus-value { color:var(--rose); }
+
+/* report table */
+body:has(.morning-theme) .report-wrap { background:#fff; border:1px solid #eceff0; border-radius:24px; box-shadow:var(--sh); }
+body:has(.morning-theme) .report-head { border-bottom:0; color:var(--ink); }
+body:has(.morning-theme) .report-group { border-bottom:1px solid #f0f2f3; color:var(--muted); font-size:.74rem; font-weight:600; letter-spacing:.04em; }
+body:has(.morning-theme) .report-cell { border:1px solid rgba(31,37,39,.035) !important; box-shadow:none; border-radius:16px; background:#fff; }
+body:has(.morning-theme) .report-label { color:#6b7478; }
+body:has(.morning-theme) .report-value { color:var(--ink); }
+body:has(.morning-theme) .report-value.alert { color:var(--rose); }
+body:has(.morning-theme) .report-cell.tone0 { background:linear-gradient(160deg,#dcf2e3,#f6fbf8); }
+body:has(.morning-theme) .report-cell.tone1 { background:linear-gradient(160deg,#e1edf9,#f7fbff); }
+body:has(.morning-theme) .report-cell.tone2 { background:linear-gradient(160deg,#ebe5f7,#faf8fe); }
+body:has(.morning-theme) .report-cell.tone3 { background:linear-gradient(160deg,#fde8cd,#fff8ee); }
+body:has(.morning-theme) .report-cell.tone4 { background:linear-gradient(160deg,#fbe2e8,#fff7f9); }
+body:has(.morning-theme) .report-cell.tone5 { background:linear-gradient(160deg,#faf0c8,#fffcec); }
+body:has(.morning-theme) .report-cell.tone6 { background:linear-gradient(160deg,#fadfd5,#fff6f2); }
+body:has(.morning-theme) .report-cell.tone7 { background:linear-gradient(160deg,#d9efec,#f5fbfa); }
+
+/* chart cards, expander, inputs, buttons */
+body:has(.morning-theme) [class*="st-key-card"] { background:#fff; border:1px solid #eceff0; border-radius:22px; box-shadow:var(--sh); }
+body:has(.morning-theme) .chart-sub { border-bottom:1px dashed #e6eaeb; }
+body:has(.morning-theme) [data-testid="stExpander"] { background:#fff; border:1px solid #eceff0 !important; border-radius:20px; box-shadow:var(--sh-sm); }
 body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fff !important; }
-.hero { padding:8px 18px 7px; margin-bottom:4px; border-radius:20px; }
-.hero-kicker { font-size:.58rem; }
-.hero-title { font-size:1.25rem; margin:0; }
-.hero-subtitle { font-size:.72rem; line-height:1.2; }
-.hero-bar { height:3px; margin-top:5px; }
-.section-title { font-size:.9rem; margin:7px 0 2px; padding-bottom:3px; }
-.section-title::before { height:15px; }
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stNumberInput"] button { color:var(--muted); }
+body:has(.morning-theme) .stButton > button { background:#1f2527; box-shadow:none; border-radius:12px; }
+
+/* sidebar: white, light-grey active pill */
+body:has(.morning-theme) [data-testid="stSidebar"] { background:#fff; border-right:1px solid #eef0f1; box-shadow:none; }
+body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #eef0f1; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
+body:has(.morning-theme) .sb-name { color:var(--ink); }
+body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:var(--muted); }
+body:has(.morning-theme) .sb-logo { background:#fff; border:1px solid #e6eaeb; border-radius:14px; box-shadow:0 2px 8px rgba(31,37,39,.05); }
+body:has(.morning-theme) .sb-logo svg { stroke:#1f2527; filter:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { background:transparent; border:1px solid transparent; box-shadow:none; border-radius:12px; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:hover { background:#f7f8f8; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label p { color:#62696d; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:#f1f3f3; border-color:#f1f3f3 !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:var(--ink); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="base-input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:#fafbfb; border:1px dashed #dde3e4; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { background:#1f2527; box-shadow:none; }
+body:has(.morning-theme) .sb-foot { border-top:1px solid #eef0f1; }
+body:has(.morning-theme) .sb-chip { background:#fff; border:1px solid #e6eaeb; box-shadow:none; color:var(--muted); }
+body:has(.morning-theme) .sb-chip.on { background:#e4f4e9; border-color:#d3ead9; color:#3f7a56; box-shadow:none; }
+
+/* compact sizing for the morning page */
 .focus-grid { gap:10px; margin:3px 0; }
-.focus-card { padding:8px 16px 7px 22px; border-radius:18px; }
-.focus-card::before { top:9px; bottom:9px; width:4px; }
 .focus-label { font-size:.76rem; }
 .focus-value { font-size:1.7rem; margin:2px 0; }
 .focus-unit { font-size:.68rem; }
 .report-wrap.compact { padding:3px 5px 5px; }
 .report-wrap.compact .report-head { padding:3px 7px 4px; font-size:.9rem; }
 .report-wrap.compact .report-grid { gap:4px; }
-.report-wrap.compact .report-group { font-size:.76rem; padding:1px 2px; }
+.report-wrap.compact .report-group { font-size:.74rem; padding:1px 2px; }
 .report-wrap.compact .report-cell { min-height:50px; padding:3px 4px; gap:2px; }
 .report-wrap.compact .report-label { font-size:.72rem; line-height:1.14; }
 .report-wrap.compact .report-value { font-size:1.02rem; }
-[class*="st-key-card"] { padding:.4rem .5rem .25rem; border-radius:18px; }
+[class*="st-key-card"] { padding:.4rem .5rem .25rem; }
 .chart-title { font-size:.82rem; margin-bottom:2px; }
 .chart-sub { font-size:.64rem; margin-bottom:3px; padding-bottom:3px; }
 </style>
