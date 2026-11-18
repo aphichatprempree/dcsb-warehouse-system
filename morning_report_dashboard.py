@@ -51,6 +51,11 @@ def _sum_numeric(frame, name, mask=None):
     return int(total) if total.is_integer() else total
 
 
+def _format_quantity(value):
+    number = float(value)
+    return f"{int(number):,}" if number.is_integer() else f"{number:,.2f}".rstrip("0").rstrip(".")
+
+
 def _minutes_since_midnight(value):
     if pd.isna(value):
         return None
@@ -140,6 +145,66 @@ def _extra_complete(rp01_22, rp03):
     return total, rp01_col, rp03_col, missing_count
 
 
+def _po_values(text_value):
+    values = re.split(r"[\s,;]+", str(text_value or "").strip())
+    return list(dict.fromkeys(key for value in values if (key := _norm_key(value))))
+
+
+def _lookup_delayed_pallets(rp01_file, po_text):
+    frame = _read_report(rp01_file, ["P/O", "Pallets Qty"])
+    requested = set(_po_values(po_text))
+    po_col = _column(frame, "P/O")
+    qty_col = _column(frame, "Pallets Qty")
+    matched = frame[po_col].map(_norm_key).isin(requested)
+    found = set(frame.loc[matched, po_col].map(_norm_key))
+    missing = sorted(requested - found)
+    total = pd.to_numeric(frame.loc[matched, qty_col], errors="coerce").fillna(0).sum()
+    total = float(total)
+    return (int(total) if total.is_integer() else total), missing
+
+
+def _lookup_reject_pallets(rp01_file, rp03_file, po_text):
+    requested = set(_po_values(po_text))
+    if not requested:
+        return 0, [], []
+    rp01 = _read_report(rp01_file, ["P/O", "Item Code", "Pack Qty", "TI", "HI"])
+    rp03 = _read_report(rp03_file, ["Purchase Order", "Item Code", "Total Pack Qty"])
+    po1, item1 = _column(rp01, "P/O"), _column(rp01, "Item Code")
+    po3, item3 = _column(rp03, "Purchase Order"), _column(rp03, "Item Code")
+    rp01 = rp01.assign(
+        _po=rp01[po1].map(_norm_key),
+        _item=rp01[item1].map(_norm_key),
+        _expected=pd.to_numeric(rp01[_column(rp01, "Pack Qty")], errors="coerce").fillna(0),
+        _ti=pd.to_numeric(rp01[_column(rp01, "TI")], errors="coerce"),
+        _hi=pd.to_numeric(rp01[_column(rp01, "HI")], errors="coerce"),
+    )
+    rp03 = rp03.assign(
+        _po=rp03[po3].map(_norm_key),
+        _item=rp03[item3].map(_norm_key),
+        _received=pd.to_numeric(rp03[_column(rp03, "Total Pack Qty")], errors="coerce").fillna(0),
+    )
+    rp01 = rp01[rp01["_po"].isin(requested) & rp01["_item"].ne("")]
+    rp03 = rp03[rp03["_po"].isin(requested) & rp03["_item"].ne("")]
+    expected = rp01.groupby(["_po", "_item"], as_index=False).agg(
+        _expected=("_expected", "sum"), _ti=("_ti", "first"), _hi=("_hi", "first")
+    )
+    received = rp03.groupby(["_po", "_item"], as_index=False)["_received"].sum()
+    matched_pos = set(expected["_po"])
+    missing = sorted(requested - matched_pos)
+    joined = expected.merge(received, on=["_po", "_item"], how="left")
+    joined["_received"] = joined["_received"].fillna(0)
+    valid = (
+        joined["_ti"].notna() & joined["_ti"].gt(0)
+        & joined["_hi"].notna() & joined["_hi"].gt(0)
+    )
+    invalid_items = joined.loc[~valid, "_item"].drop_duplicates().tolist()
+    joined = joined.loc[valid].copy()
+    joined["_reject_pack"] = (joined["_expected"] - joined["_received"]).clip(lower=0)
+    total = (joined["_reject_pack"] / joined["_ti"] / joined["_hi"]).sum()
+    total = float(total)
+    return (int(total) if total.is_integer() else total), missing, invalid_items
+
+
 def _load_imported_metrics(files):
     result = {}
     try:
@@ -181,6 +246,7 @@ REPORT_DEFAULTS = {
     "hist_not_po": 73,
     "hist_not_billed": 250,
 }
+HISTORY_PO_FIELDS = ("hist_delayed_po_input", "hist_reject_po_input", "hist_po_rp01_source")
 MORNING_DEFAULTS = {
     "inv_all": 6058,
     "night_received": 4240,
@@ -218,6 +284,7 @@ def _save_report_record(report_date, values, page="history"):
     fields = MORNING_DEFAULTS if page == "morning" else REPORT_DEFAULTS
     store.setdefault("records", {})[f"{page}:{report_date}"] = {
         **{field: values.get(field, fields[field]) for field in fields},
+        **({field: values.get(field, "") for field in HISTORY_PO_FIELDS} if page == "history" else {}),
         "updated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
     }
     store["morning_latest_date" if page == "morning" else "latest_date"] = report_date
@@ -235,6 +302,7 @@ def _autosave_current_report():
         field: st.session_state.get(field, REPORT_DEFAULTS[field])
         for field in REPORT_DEFAULTS
     }
+    values.update({field: st.session_state.get(field, "") for field in HISTORY_PO_FIELDS})
     try:
         _save_report_record(report_date.strftime("%Y-%m-%d"), values)
         st.session_state["_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
@@ -754,6 +822,11 @@ else:
         if isinstance(value, float) and value.is_integer():
             value = int(value)
         st.session_state[field] = value
+    if st.session_state.get("_loaded_history_detail_date") != selected_report_date:
+        st.session_state["hist_delayed_po_input"] = record.get("hist_delayed_po_input", "") if record else ""
+        st.session_state["hist_reject_po_input"] = record.get("hist_reject_po_input", "") if record else ""
+        st.session_state["hist_po_rp01_source"] = record.get("hist_po_rp01_source", "RP01 16.10") if record else "RP01 16.10"
+        st.session_state["_loaded_history_detail_date"] = selected_report_date
     st.session_state["_loaded_report_date"] = selected_report_date
     if _new_import:
         for metric, value in imported.items():
@@ -937,6 +1010,78 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 # ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
 # =========================================================================
 else:
+    with st.expander("📋 วาง PO สำหรับคำนวณเลื่อนส่งและ Reject", expanded=False):
+        st.caption("ใส่ PO ทีละบรรทัด ระบบจะเทียบกับไฟล์ RP01 ที่เลือก และจำรายการแยกตามวันที่")
+        source_name = st.selectbox(
+            "เลือก RP01 สำหรับเทียบ PO",
+            ["RP01 16.10", "RP01 22.00"],
+            key="hist_po_rp01_source",
+            on_change=_autosave_current_report,
+        )
+        po_col1, po_col2 = st.columns(2, gap="small")
+        with po_col1:
+            st.text_area(
+                "PO เลื่อนส่ง (หนึ่ง PO ต่อบรรทัด)",
+                key="hist_delayed_po_input",
+                height=110,
+                placeholder="ตัวอย่าง:\n5011110177\n5011110673",
+                on_change=_autosave_current_report,
+            )
+        with po_col2:
+            st.text_area(
+                "PO Reject (หนึ่ง PO ต่อบรรทัด)",
+                key="hist_reject_po_input",
+                height=110,
+                placeholder="วางรายการ PO ที่ต้องตรวจ Reject",
+                on_change=_autosave_current_report,
+            )
+
+        rp01_source = uploaded_rp01_1610 if source_name == "RP01 16.10" else uploaded_rp01_2200
+        delayed_pos = st.session_state.get("hist_delayed_po_input", "")
+        reject_pos = st.session_state.get("hist_reject_po_input", "")
+        lookup_changed = False
+        if rp01_source is None:
+            st.info(f"กรุณา Import {source_name} ก่อน ระบบจึงจะเทียบ PO ได้")
+        else:
+            if _po_values(delayed_pos):
+                try:
+                    delayed_value, delayed_missing = _lookup_delayed_pallets(rp01_source, delayed_pos)
+                    if st.session_state.get("hist_delayed") != delayed_value:
+                        st.session_state["hist_delayed"] = delayed_value
+                        lookup_changed = True
+                    delayed_count = len(_po_values(delayed_pos))
+                    st.caption(f"เลื่อนส่ง: {delayed_value:,} Pallets · พบ PO {delayed_count - len(delayed_missing)}/{delayed_count}")
+                    if delayed_missing:
+                        st.warning("PO เลื่อนส่งที่ไม่พบใน RP01: " + ", ".join(delayed_missing))
+                except Exception as exc:
+                    st.error(f"คำนวณเลื่อนส่งไม่สำเร็จ: {exc}")
+            else:
+                st.caption("ยังไม่ได้วาง PO เลื่อนส่ง · ใช้ยอดที่บันทึกไว้หรือกรอกยอดเองในตัวแก้ไขด้านล่าง")
+
+            if _po_values(reject_pos):
+                if uploaded_rp03 is None:
+                    st.info("กรุณา Import RP03 เพื่อคำนวณ Reject")
+                else:
+                    try:
+                        reject_value, reject_missing, reject_invalid = _lookup_reject_pallets(
+                            rp01_source, uploaded_rp03, reject_pos
+                        )
+                        if st.session_state.get("hist_not_po") != reject_value:
+                            st.session_state["hist_not_po"] = reject_value
+                            lookup_changed = True
+                        reject_count = len(_po_values(reject_pos))
+                        st.caption(f"Reject: {reject_value:,.2f} Pallets · พบ PO {reject_count - len(reject_missing)}/{reject_count}")
+                        if reject_missing:
+                            st.warning("PO Reject ที่ไม่พบใน RP01: " + ", ".join(reject_missing))
+                        if reject_invalid:
+                            st.warning("มี Item Code ใน RP01 ที่ไม่มีค่า TI/HI ที่ใช้คำนวณ: " + ", ".join(reject_invalid))
+                    except Exception as exc:
+                        st.error(f"คำนวณ Reject ไม่สำเร็จ: {exc}")
+            else:
+                st.caption("ยังไม่ได้วาง PO Reject · ใช้ยอดที่บันทึกไว้หรือกรอกยอดเองในตัวแก้ไขด้านล่าง")
+        if lookup_changed:
+            _autosave_current_report()
+
     hist_inv = st.session_state.get("hist_inv", 6126)
     hist_total_recv = st.session_state.get("hist_total_recv", 5904)
     hist_complete = st.session_state.get("hist_complete", 5722)
@@ -961,8 +1106,8 @@ else:
         ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
         ("งานนอกรอบ Complete", hist_extra_label, False),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
-        ("เลื่อนส่ง", f"{hist_delayed:,}", False),
-        ("Reject ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
+        ("เลื่อนส่ง", _format_quantity(hist_delayed), False),
+        ("Reject / ส่งไม่ครบตาม PO", _format_quantity(hist_not_po), False),
         ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
         ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
     ]
@@ -1002,7 +1147,7 @@ else:
             )
             st.plotly_chart(
                 radial_chart(
-                    ["ยังไม่ยื่นบิล", "Reject ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
+                    ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO", "เลื่อนส่ง"],
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
                     height=320,
@@ -1031,10 +1176,10 @@ else:
                 st.caption("งานนอกรอบยังไม่แสดงยอดจนกว่าจะจับคู่คีย์ RP01/RP03 ได้")
         with hc3:
             hist_delayed = st.number_input(
-                "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed", on_change=_autosave_current_report
+                "เลื่อนส่ง (Pallets)", value=float(hist_delayed), step=1.0, key="hist_delayed", on_change=_autosave_current_report
             )
             hist_not_po = st.number_input(
-                "Reject ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po", on_change=_autosave_current_report
+                "Reject / ส่งไม่ครบตาม PO (Pallets)", value=float(hist_not_po), step=1.0, key="hist_not_po", on_change=_autosave_current_report
             )
         with hc4:
             hist_not_billed = st.number_input(
