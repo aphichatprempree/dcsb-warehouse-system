@@ -619,6 +619,37 @@ sheet_selection = st.sidebar.radio(
     format_func=lambda s: f"{NAV_ICON[s]}  {s}",
     label_visibility="collapsed",
 )
+if sheet_selection == NAV[1]:
+    st.markdown(
+        """
+<style>
+.hero { padding:8px 18px 7px; margin-bottom:4px; border-radius:20px; }
+.hero-kicker { font-size:.58rem; }
+.hero-title { font-size:1.25rem; margin:0; }
+.hero-subtitle { font-size:.72rem; line-height:1.2; }
+.hero-bar { height:3px; margin-top:5px; }
+.section-title { font-size:.9rem; margin:7px 0 2px; padding-bottom:3px; }
+.section-title::before { height:15px; }
+.focus-grid { gap:10px; margin:3px 0; }
+.focus-card { padding:8px 16px 7px 22px; border-radius:18px; }
+.focus-card::before { top:9px; bottom:9px; width:4px; }
+.focus-label { font-size:.76rem; }
+.focus-value { font-size:1.7rem; margin:2px 0; }
+.focus-unit { font-size:.68rem; }
+.report-wrap.compact { padding:3px 5px 5px; }
+.report-wrap.compact .report-head { padding:3px 7px 4px; font-size:.9rem; }
+.report-wrap.compact .report-grid { gap:4px; }
+.report-wrap.compact .report-group { font-size:.76rem; padding:1px 2px; }
+.report-wrap.compact .report-cell { min-height:50px; padding:3px 4px; gap:2px; }
+.report-wrap.compact .report-label { font-size:.72rem; line-height:1.14; }
+.report-wrap.compact .report-value { font-size:1.02rem; }
+[class*="st-key-card"] { padding:.4rem .5rem .25rem; border-radius:18px; }
+.chart-title { font-size:.82rem; margin-bottom:2px; }
+.chart-sub { font-size:.64rem; margin-bottom:3px; padding-bottom:3px; }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
 # Keep both page-specific upload sections mounted so Streamlit preserves each
 # page's selected files while the user switches between reports.
@@ -837,6 +868,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     ["รับกะดึก", "รับกะเช้า", "คงเหลือทั้งหมด"],
                     [night_received, morning_received, total_remaining],
                     base=inv_all,
+                    height=220,
                 ),
                 use_container_width=True,
             )
@@ -847,6 +879,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                 radial_chart(
                     ["กะดึก", "กะเช้า", "นอกรอบ"],
                     [complete_night, complete_morning, extra_work],
+                    height=220,
                 ),
                 use_container_width=True,
             )
@@ -857,6 +890,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                 radial_chart(
                     ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
                     [recv_start, in_transit, sup_night_missing, sup_morning_missing],
+                    height=220,
                 ),
                 use_container_width=True,
             )
