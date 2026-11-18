@@ -780,34 +780,37 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 if sheet_selection == NAV[1]:
-    RAINBOW = ["#75cbb0", "#91d2af", "#b5d39a", "#d9d080", "#efc36e", "#efa75f", "#e98c72", "#b8c99a"]
+    RAINBOW = ["#83c89d", "#8eb7df", "#aa94d0", "#f1bd69", "#e789a9", "#efd479", "#e99c82", "#83c7c1"]
     st.markdown(
         """
 <style>
 body:has(.morning-theme) {
-    --ink:#34473f; --muted:#7e8f85; --blue:#65ac91; --blue2:#89cdb1;
-    --rose:#dc806d; --grad:linear-gradient(120deg,#8bd6bb,#eebc62);
-    --line:#dcece3; --line-strong:#c7e2d3;
-    --sh:0 7px 20px rgba(68,121,96,.08);
-    --sh-sm:0 3px 10px rgba(68,121,96,.07);
-    --sh-in:inset 0 1px 3px rgba(68,121,96,.06);
+    --ink:#30363a; --muted:#7e878b; --blue:#7197bd; --blue2:#94b6d3;
+    --rose:#d77e88; --grad:linear-gradient(120deg,#c9e8d2,#f5e2b5);
+    --line:#e8edef; --line-strong:#dce4e6;
+    --sh:0 7px 20px rgba(61,79,73,.07);
+    --sh-sm:0 3px 10px rgba(61,79,73,.06);
+    --sh-in:inset 0 1px 3px rgba(61,79,73,.05);
 }
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(135deg,#f3faf6,#fff8ed); }
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#ffffff; }
 body:has(.morning-theme) .hero,
 body:has(.morning-theme) .focus-card,
 body:has(.morning-theme) .report-wrap,
 body:has(.morning-theme) [class*="st-key-card"],
 body:has(.morning-theme) [data-testid="stExpander"] { background:#ffffff; }
 body:has(.morning-theme) .report-cell { background:#ffffff; }
-body:has(.morning-theme) [data-testid="stSidebar"] { background:#ffffff; border-right:1px solid #eeeaf4; box-shadow:4px 0 18px rgba(51,39,78,.05); }
+body:has(.morning-theme) [data-testid="stSidebar"] { background:#ffffff; border-right:1px solid #edf0f1; box-shadow:4px 0 18px rgba(48,59,55,.035); }
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { border-color:#98cfb4 !important; box-shadow:0 5px 13px rgba(107,172,139,.18); }
-body:has(.morning-theme) .sb-brand { background:linear-gradient(120deg,#83cfb2,#e8b35c); border:0; border-radius:14px; padding:10px 9px; margin:0 -2px 8px; }
-body:has(.morning-theme) .sb-name, body:has(.morning-theme) .sb-sub { color:#ffffff; }
-body:has(.morning-theme) .sb-logo { background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.35); box-shadow:none; }
-body:has(.morning-theme) .sb-label { color:#9b94a8; }
-body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(117,184,148,.22); }
-body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(117,184,148,.18); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:#eef6f0; border-color:#dcebe0 !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#52715d; }
+body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #e8edef; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
+body:has(.morning-theme) .sb-name { color:#30363a; }
+body:has(.morning-theme) .sb-sub { color:#8a9296; }
+body:has(.morning-theme) .sb-logo { background:#7eae8b; border-color:#719d7b; box-shadow:none; }
+body:has(.morning-theme) .sb-label { color:#84908b; }
+body:has(.morning-theme) .hero-bar { box-shadow:0 3px 8px rgba(119,168,139,.16); }
+body:has(.morning-theme) .section-title::before { box-shadow:0 2px 7px rgba(119,168,139,.14); }
 body:has(.morning-theme) .report-wrap { border-width:1px; }
 body:has(.morning-theme) .report-cell { box-shadow:0 2px 8px rgba(54,40,83,.06); }
 body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
@@ -1058,7 +1061,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             report_values,
             6,
             compact=True,
-            accent_colors=["#79cbb0", "#97d0a8", "#b9d18e", "#d9cb74", "#edbd63", "#efa55e", "#e68c70"],
+            accent_colors=["#83c89d", "#8eb7df", "#aa94d0", "#f1bd69", "#e789a9", "#efd479", "#e99c82"],
         ),
         unsafe_allow_html=True,
     )
