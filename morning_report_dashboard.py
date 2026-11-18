@@ -1,3 +1,8 @@
+import json
+import hashlib
+from pathlib import Path
+from datetime import date
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -45,6 +50,18 @@ def _sum_numeric(frame, name, mask=None):
     return int(total) if total.is_integer() else total
 
 
+def _report_date_from_frame(frame):
+    """Use the most common delivery date in RP01 as the report date."""
+    try:
+        col = _column(frame, "Delivery Date")
+    except ValueError:
+        return None
+    dates = pd.to_datetime(frame[col], dayfirst=True, errors="coerce").dropna()
+    if dates.empty:
+        return None
+    return dates.dt.date.value_counts().index[0]
+
+
 def _extra_complete(rp01_22, rp03):
     """Sum only RP03 case quantities absent from RP01 Pallets Qty (VLOOKUP #N/A)."""
     rp01_col = _column(rp01_22, "Pallets Qty")
@@ -64,9 +81,12 @@ def _load_imported_metrics(files):
         if files["rp01_1610"] is not None:
             d = _read_report(files["rp01_1610"], ["Pallets Qty", "P/O"])
             result["hist_total_recv"] = _sum_numeric(d, "Pallets Qty")
+            result["report_date"] = _report_date_from_frame(d)
         if files["rp01_2200"] is not None:
             d22 = _read_report(files["rp01_2200"], ["Pallets Qty", "P/O"])
             result["hist_not_billed"] = _sum_numeric(d22, "Pallets Qty")
+            if not result.get("report_date"):
+                result["report_date"] = _report_date_from_frame(d22)
         else:
             d22 = None
         if files["rp42"] is not None:
@@ -87,6 +107,57 @@ def _load_imported_metrics(files):
     except Exception as exc:
         return result, str(exc)
 
+REPORT_DEFAULTS = {
+    "hist_inv": 6126,
+    "hist_total_recv": 5904,
+    "hist_complete": 5722,
+    "hist_extra": 138,
+    "hist_delayed": 0,
+    "hist_not_po": 73,
+    "hist_not_billed": 250,
+}
+
+
+REPORT_STORE_PATH = Path(__file__).with_name("daily_reports.json")
+
+
+def _load_report_store():
+    try:
+        with REPORT_STORE_PATH.open("r", encoding="utf-8") as stream:
+            data = json.load(stream)
+        return data if isinstance(data.get("records"), dict) else {"records": {}}
+    except (OSError, ValueError, TypeError):
+        return {"records": {}}
+
+
+def _save_report_record(report_date, values):
+    store = _load_report_store()
+    store.setdefault("records", {})[report_date] = {
+        **{field: values[field] for field in REPORT_DEFAULTS},
+        "updated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+    }
+    store["latest_date"] = report_date
+    temp_path = REPORT_STORE_PATH.with_suffix(".json.tmp")
+    with temp_path.open("w", encoding="utf-8") as stream:
+        json.dump(store, stream, ensure_ascii=False, indent=2)
+    temp_path.replace(REPORT_STORE_PATH)
+
+
+def _autosave_current_report():
+    report_date = st.session_state.get("h_date_input")
+    if not report_date:
+        return
+    values = {
+        field: st.session_state.get(field, REPORT_DEFAULTS[field])
+        for field in REPORT_DEFAULTS
+    }
+    try:
+        _save_report_record(report_date.strftime("%Y-%m-%d"), values)
+        st.session_state["_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
+    except OSError as exc:
+        st.session_state["_autosave_error"] = str(exc)
+
+
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
 st.set_page_config(
     page_title="DCSB Warehouse Morning Report",
@@ -94,6 +165,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+REPORT_STORE = _load_report_store()
 
 # ชุดสีโทนน้ำเงิน-เทาฟ้า ตามธีม Soft UI
 RAINBOW = [
@@ -433,20 +506,6 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 
-st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
-    morning_date = st.sidebar.date_input(
-        "ประจำวันที่ (กะเช้าปัจจุบัน)",
-        value=pd.to_datetime("2026-11-13"),
-        key="m_date_input",
-    )
-else:
-    hist_date = st.sidebar.date_input(
-        "ประจำวันที่ (ย้อนหลัง)",
-        value=pd.to_datetime("2026-11-12"),
-        key="h_date_input",
-    )
-
 st.sidebar.markdown(
     '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
 )
@@ -468,9 +527,54 @@ imported, import_error = _load_imported_metrics({
     "rp03": uploaded_rp03,
     "rp42": uploaded_rp42,
 })
-for metric, value in imported.items():
-    if metric.startswith("hist_"):
-        st.session_state[metric] = value
+_uploads = (uploaded_rp01_1610, uploaded_rp01_2200, uploaded_rp03, uploaded_rp42)
+_import_signature = hashlib.sha256(
+    "|".join(
+        f"{f.name}:{hashlib.sha256(f.getvalue()).hexdigest()}" if f is not None else "-"
+        for f in _uploads
+    ).encode("utf-8")
+).hexdigest()
+_new_import = _import_signature != st.session_state.get("_last_import_signature")
+if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
+    st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+    morning_date = st.sidebar.date_input(
+        "ประจำวันที่ (กะเช้าปัจจุบัน)", value=pd.to_datetime("2026-11-13"), key="m_date_input"
+    )
+else:
+    rp01_date = imported.get("report_date")
+    if rp01_date:
+        st.session_state["h_date_input"] = rp01_date
+    elif "h_date_input" not in st.session_state:
+        latest = REPORT_STORE.get("latest_date")
+        st.session_state["h_date_input"] = date.fromisoformat(latest) if latest else date.today()
+    st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+    hist_date = st.sidebar.date_input(
+        "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
+    )
+    selected_report_date = hist_date.strftime("%Y-%m-%d")
+    if st.session_state.get("_loaded_report_date") != selected_report_date:
+        record = REPORT_STORE.get("records", {}).get(selected_report_date)
+        for field, default_value in REPORT_DEFAULTS.items():
+            value = record.get(field, default_value) if record else default_value
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+            st.session_state[field] = value
+        st.session_state["_loaded_report_date"] = selected_report_date
+    if _new_import:
+        for metric, value in imported.items():
+            if metric.startswith("hist_"):
+                st.session_state[metric] = value
+        st.session_state["_last_import_signature"] = _import_signature
+    if _new_import and any(key.startswith("hist_") for key in imported):
+        _autosave_current_report()
+        REPORT_STORE = _load_report_store()
+        st.sidebar.success(f"นำเข้าและจำข้อมูลของวันที่ {selected_report_date} แล้ว")
+    elif REPORT_STORE.get("records", {}).get(selected_report_date):
+        st.sidebar.caption("โหลดข้อมูลล่าสุดของวันที่เลือกแล้ว · บันทึกอัตโนมัติ")
+    else:
+        st.sidebar.caption("ข้อมูลที่แก้ไขจะถูกจำไว้โดยอัตโนมัติ")
+    if st.session_state.get("_autosave_error"):
+        st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_autosave_error']}")
 if import_error:
     st.sidebar.error(f"อ่านไฟล์ไม่สำเร็จ: {import_error}")
 if imported.get("extra_join"):
@@ -712,29 +816,31 @@ else:
         hc1, hc2, hc3, hc4 = st.columns(4, gap="small")
         with hc1:
             hist_inv = st.number_input(
-                "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv"
+                "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv", on_change=_autosave_current_report
             )
             hist_total_recv = st.number_input(
-                "งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv"
+                "งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv", on_change=_autosave_current_report
             )
         with hc2:
             hist_complete = st.number_input(
-                "งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete"
+                    "งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
             )
             if hist_extra is not None:
                 hist_extra = st.number_input(
-                    "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra"
+                    "งานนอกรอบ Complete", value=hist_extra, step=1, key="hist_extra", on_change=_autosave_current_report
                 )
             else:
                 st.caption("งานนอกรอบยังไม่แสดงยอดจนกว่าจะจับคู่คีย์ RP01/RP03 ได้")
         with hc3:
             hist_delayed = st.number_input(
-                "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed"
+                "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed", on_change=_autosave_current_report
             )
             hist_not_po = st.number_input(
-                "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po"
+                "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po", on_change=_autosave_current_report
             )
         with hc4:
             hist_not_billed = st.number_input(
-                "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed"
+                "ยังไม่ยื่นบิล", value=hist_not_billed, step=1, key="hist_not_billed", on_change=_autosave_current_report
             )
+        if st.session_state.get("_autosaved_at"):
+            st.caption(f"จำข้อมูลล่าสุดอัตโนมัติ · {st.session_state['_autosaved_at']}")
