@@ -317,14 +317,14 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .focus-unit { font-size:.74rem; color:var(--muted); font-weight:500; }
 
 /* ---------- REPORT TABLE ---------- */
-.report-wrap { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:24px; overflow:hidden; box-shadow:var(--sh); border:2px solid var(--line-strong); padding:8px 10px 14px; }
-.report-head { color:var(--ink); text-align:left; padding:8px 14px 10px; margin-bottom:6px; border-bottom:2px solid var(--line); font-size:.92rem; font-weight:700; }
-.report-date { font-size:.74rem; font-weight:500; color:var(--muted); margin-left:5px; }
-.report-grid { display:grid; gap:12px; padding:4px 6px; }
-.report-group { grid-column:1 / -1; color:var(--ink); font-size:.8rem; font-weight:700; padding:5px 3px 2px; border-bottom:1px solid var(--line); letter-spacing:.01em; }
-.report-cell { border-radius:16px; padding:10px 8px 10px; text-align:center; background:#f1f4f9; box-shadow:var(--sh-sm); border:1.5px solid var(--line); min-height:84px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
-.report-label { color:#5d6987; font-size:.66rem; line-height:1.35; font-weight:500; }
-.report-value { color:var(--ink); font-size:1.15rem; font-weight:700; line-height:1.3; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.report-wrap { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:20px; overflow:hidden; box-shadow:var(--sh); border:2px solid var(--line-strong); padding:5px 7px 8px; }
+.report-head { color:var(--ink); text-align:left; padding:5px 10px 6px; margin-bottom:2px; border-bottom:2px solid var(--line); font-size:.98rem; font-weight:700; }
+.report-date { font-size:.82rem; font-weight:500; color:var(--muted); margin-left:5px; }
+.report-grid { display:grid; gap:7px; padding:2px 3px; }
+.report-group { grid-column:1 / -1; color:var(--ink); font-size:.9rem; line-height:1.2; font-weight:700; padding:3px 3px 2px; border-bottom:1px solid var(--line); letter-spacing:.01em; }
+.report-cell { border-radius:12px; padding:6px 6px; text-align:center; background:#f1f4f9; box-shadow:var(--sh-sm); border:1.5px solid var(--line); min-height:68px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; gap:4px; }
+.report-label { color:#4d5a78; font-size:.78rem; line-height:1.25; font-weight:500; }
+.report-value { color:var(--ink); font-size:1.22rem; font-weight:700; line-height:1.2; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
 .report-value.alert { color:var(--rose); }
 
 /* ---------- CHART CARDS ---------- */
