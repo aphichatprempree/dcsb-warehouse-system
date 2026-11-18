@@ -780,20 +780,26 @@ _page_id = "morning" if sheet_selection == NAV[1] else "history"
 
 def _render_upload_section(page_id, title, expanded):
     with st.sidebar.expander(title, expanded=expanded):
-        return {
+        uploads = {
             "rp01_1610": st.file_uploader(
                 "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
             ),
-            "rp01_2200": st.file_uploader(
+        }
+        if page_id == "history":
+            uploads["rp01_2200"] = st.file_uploader(
                 "RP01 หลัง 22.00", type=["xlsx", "xls"], key=f"{page_id}_rp01_2200"
-            ),
+            )
+        else:
+            uploads["rp01_2200"] = None
+        uploads.update({
             "rp03": st.file_uploader(
                 "RP03 GRN", type=["xlsx", "xls"], key=f"{page_id}_rp03"
             ),
             "rp42": st.file_uploader(
                 "RP42 ASN Status", type=["xlsx", "xls"], key=f"{page_id}_rp42"
             ),
-        }
+        })
+        return uploads
 
 
 st.sidebar.markdown('<div class="sb-label">Import ไฟล์แยกตามหน้า</div>', unsafe_allow_html=True)
