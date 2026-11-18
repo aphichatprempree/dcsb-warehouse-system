@@ -116,6 +116,20 @@ REPORT_DEFAULTS = {
     "hist_not_po": 73,
     "hist_not_billed": 250,
 }
+MORNING_DEFAULTS = {
+    "inv_all": 6058,
+    "night_received": 4240,
+    "morning_received": 1818,
+    "complete_night": 4475,
+    "work_night": 3507,
+    "work_morning": 310,
+    "extra_work": 658,
+    "total_remaining": 2425,
+    "recv_start": 473,
+    "in_transit": 268,
+    "sup_night_missing": 239,
+    "sup_morning_missing": 1445,
+}
 
 
 REPORT_STORE_PATH = Path(__file__).with_name("daily_reports.json")
@@ -130,13 +144,19 @@ def _load_report_store():
         return {"records": {}}
 
 
-def _save_report_record(report_date, values):
+def _get_report_record(report_date, page="history"):
+    records = REPORT_STORE.get("records", {})
+    return records.get(f"{page}:{report_date}") or (records.get(report_date) if page == "history" else None)
+
+
+def _save_report_record(report_date, values, page="history"):
     store = _load_report_store()
-    store.setdefault("records", {})[report_date] = {
-        **{field: values[field] for field in REPORT_DEFAULTS},
+    fields = MORNING_DEFAULTS if page == "morning" else REPORT_DEFAULTS
+    store.setdefault("records", {})[f"{page}:{report_date}"] = {
+        **{field: values.get(field, fields[field]) for field in fields},
         "updated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
     }
-    store["latest_date"] = report_date
+    store[f"{page}_latest_date"] = report_date
     temp_path = REPORT_STORE_PATH.with_suffix(".json.tmp")
     with temp_path.open("w", encoding="utf-8") as stream:
         json.dump(store, stream, ensure_ascii=False, indent=2)
@@ -156,6 +176,18 @@ def _autosave_current_report():
         st.session_state["_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
     except OSError as exc:
         st.session_state["_autosave_error"] = str(exc)
+
+
+def _autosave_morning_report():
+    report_date = st.session_state.get("m_date_input")
+    if not report_date:
+        return
+    values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
+    try:
+        _save_report_record(report_date.strftime("%Y-%m-%d"), values, page="morning")
+        st.session_state["_morning_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
+    except OSError as exc:
+        st.session_state["_morning_autosave_error"] = str(exc)
 
 
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
@@ -506,20 +538,30 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 
+# Each report page has its own upload widgets. Clear that page's prior uploads
+# on entry so a new report day always starts with freshly selected files.
+_page_id = "morning" if sheet_selection == NAV[1] else "history"
+_upload_keys = [f"{_page_id}_{name}" for name in ("rp01_1610", "rp01_2200", "rp03", "rp42")]
+if st.session_state.get("_last_report_page") != sheet_selection:
+    for _key in _upload_keys:
+        st.session_state.pop(_key, None)
+    st.session_state.pop(f"_last_import_signature_{_page_id}", None)
+    st.session_state["_last_report_page"] = sheet_selection
+
 st.sidebar.markdown(
     '<div class="sb-label">Import ไฟล์รายงานระบบ</div>', unsafe_allow_html=True
 )
 uploaded_rp01_1610 = st.sidebar.file_uploader(
-    "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key="rp01_1610"
+    "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{_page_id}_rp01_1610"
 )
 uploaded_rp01_2200 = st.sidebar.file_uploader(
-    "RP01 หลัง 22.00", type=["xlsx", "xls"], key="rp01_2200"
+    "RP01 หลัง 22.00", type=["xlsx", "xls"], key=f"{_page_id}_rp01_2200"
 )
 uploaded_rp03 = st.sidebar.file_uploader(
-    "RP03 GRN", type=["xlsx", "xls"], key="rp03"
+    "RP03 GRN", type=["xlsx", "xls"], key=f"{_page_id}_rp03"
 )
 uploaded_rp42 = st.sidebar.file_uploader(
-    "RP42 ASN Status", type=["xlsx", "xls"], key="rp42"
+    "RP42 ASN Status", type=["xlsx", "xls"], key=f"{_page_id}_rp42"
 )
 imported, import_error = _load_imported_metrics({
     "rp01_1610": uploaded_rp01_1610,
@@ -534,12 +576,38 @@ _import_signature = hashlib.sha256(
         for f in _uploads
     ).encode("utf-8")
 ).hexdigest()
-_new_import = _import_signature != st.session_state.get("_last_import_signature")
+_import_signature_key = f"_last_import_signature_{_page_id}"
+_new_import = _import_signature != st.session_state.get(_import_signature_key)
 if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
+    rp01_date = imported.get("report_date")
+    if rp01_date:
+        st.session_state["m_date_input"] = rp01_date
+    elif "m_date_input" not in st.session_state:
+        latest = REPORT_STORE.get("morning_latest_date")
+        st.session_state["m_date_input"] = date.fromisoformat(latest) if latest else date.today()
     st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
     morning_date = st.sidebar.date_input(
-        "ประจำวันที่ (กะเช้าปัจจุบัน)", value=pd.to_datetime("2026-11-13"), key="m_date_input"
+        "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
     )
+    selected_morning_date = morning_date.strftime("%Y-%m-%d")
+    if st.session_state.get("_loaded_morning_date") != selected_morning_date:
+        record = _get_report_record(selected_morning_date, page="morning")
+        for field, default_value in MORNING_DEFAULTS.items():
+            value = record.get(field, default_value) if record else default_value
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+            st.session_state[field] = value
+        st.session_state["_loaded_morning_date"] = selected_morning_date
+    if _new_import and any(_uploads):
+        values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
+        _save_report_record(selected_morning_date, values, page="morning")
+        REPORT_STORE = _load_report_store()
+        st.session_state[_import_signature_key] = _import_signature
+        st.sidebar.success(f"จำข้อมูลหน้ากะเช้าของวันที่ {selected_morning_date} แล้ว")
+    else:
+        st.sidebar.caption("วันที่อิงจาก RP01 · ตัวเลขและข้อมูลหน้านี้จำอัตโนมัติ")
+    if st.session_state.get("_morning_autosave_error"):
+        st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_morning_autosave_error']}")
 else:
     rp01_date = imported.get("report_date")
     if rp01_date:
@@ -553,7 +621,7 @@ else:
     )
     selected_report_date = hist_date.strftime("%Y-%m-%d")
     if st.session_state.get("_loaded_report_date") != selected_report_date:
-        record = REPORT_STORE.get("records", {}).get(selected_report_date)
+        record = _get_report_record(selected_report_date, page="history")
         for field, default_value in REPORT_DEFAULTS.items():
             value = record.get(field, default_value) if record else default_value
             if isinstance(value, float) and value.is_integer():
@@ -564,7 +632,7 @@ else:
         for metric, value in imported.items():
             if metric.startswith("hist_"):
                 st.session_state[metric] = value
-        st.session_state["_last_import_signature"] = _import_signature
+        st.session_state[_import_signature_key] = _import_signature
     if _new_import and any(key.startswith("hist_") for key in imported):
         _autosave_current_report()
         REPORT_STORE = _load_report_store()
@@ -697,43 +765,45 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         col_a, col_b, col_c = st.columns(3, gap="small")
         with col_a:
             inv_all = st.number_input(
-                "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all"
+                "ยอดงานประมาณการรับทั้งหมด", value=inv_all, step=1, key="inv_all", on_change=_autosave_morning_report
             )
             night_received = st.number_input(
-                "ยอดงานรับกะดึก (ทั้งหมด)", value=night_received, step=1, key="night_received"
+                "ยอดงานรับกะดึก (ทั้งหมด)", value=night_received, step=1, key="night_received", on_change=_autosave_morning_report
             )
             morning_received = st.number_input(
-                "ยอดงานรับกะเช้า (ทั้งหมด)", value=morning_received, step=1, key="morning_received"
+                "ยอดงานรับกะเช้า (ทั้งหมด)", value=morning_received, step=1, key="morning_received", on_change=_autosave_morning_report
             )
         with col_b:
             complete_night = st.number_input(
-                "ยอดงาน Complete รับกะดึก", value=complete_night, step=1, key="complete_night"
+                "ยอดงาน Complete รับกะดึก", value=complete_night, step=1, key="complete_night", on_change=_autosave_morning_report
             )
             work_night = st.number_input(
-                "งาน Complete - กะดึก", value=work_night, step=1, key="work_night"
+                "งาน Complete - กะดึก", value=work_night, step=1, key="work_night", on_change=_autosave_morning_report
             )
             work_morning = st.number_input(
-                "งาน Complete - กะเช้า", value=work_morning, step=1, key="work_morning"
+                "งาน Complete - กะเช้า", value=work_morning, step=1, key="work_morning", on_change=_autosave_morning_report
             )
             extra_work = st.number_input(
-                "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work"
+                "งาน Complete - นอกรอบ", value=extra_work, step=1, key="extra_work", on_change=_autosave_morning_report
             )
         with col_c:
             total_remaining = st.number_input(
-                "สรุปงานรับคงเหลือทั้งหมด", value=total_remaining, step=1, key="total_remaining"
+                "สรุปงานรับคงเหลือทั้งหมด", value=total_remaining, step=1, key="total_remaining", on_change=_autosave_morning_report
             )
             recv_start = st.number_input(
-                "กำลังลงสินค้า (Receiving Start)", value=recv_start, step=1, key="recv_start"
+                "กำลังลงสินค้า (Receiving Start)", value=recv_start, step=1, key="recv_start", on_change=_autosave_morning_report
             )
             in_transit = st.number_input(
-                "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit"
+                "รอลงสินค้า (InTransit)", value=in_transit, step=1, key="in_transit", on_change=_autosave_morning_report
             )
             sup_night_missing = st.number_input(
-                "Supplier ยังไม่มาส่งกะดึก", value=sup_night_missing, step=1, key="sup_night_missing"
+                "Supplier ยังไม่มาส่งกะดึก", value=sup_night_missing, step=1, key="sup_night_missing", on_change=_autosave_morning_report
             )
             sup_morning_missing = st.number_input(
-                "Supplier ยังไม่มาส่งกะเช้า", value=sup_morning_missing, step=1, key="sup_morning_missing"
+                "Supplier ยังไม่มาส่งกะเช้า", value=sup_morning_missing, step=1, key="sup_morning_missing", on_change=_autosave_morning_report
             )
+        if st.session_state.get("_morning_autosaved_at"):
+            st.caption(f"จำข้อมูลล่าสุดอัตโนมัติ · {st.session_state['_morning_autosaved_at']}")
 
 # =========================================================================
 # ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
