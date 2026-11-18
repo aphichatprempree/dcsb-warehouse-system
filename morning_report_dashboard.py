@@ -150,8 +150,14 @@ def _po_values(text_value):
     return list(dict.fromkeys(key for value in values if (key := _norm_key(value))))
 
 
-def _item_column(frame):
-    aliases = {"item code", "item", "item number", "item no", "item no.", "sku", "product code"}
+def _item_column(frame, preferred):
+    preferred_match = next((c for c in frame.columns if c.strip().casefold() == preferred.casefold()), None)
+    if preferred_match is not None:
+        return preferred_match
+    aliases = {
+        "item code", "item name", "item", "item number", "item no", "item no.",
+        "sku", "product code",
+    }
     return next((c for c in frame.columns if c.strip().casefold() in aliases), None)
 
 
@@ -174,11 +180,11 @@ def _lookup_reject_pallets(rp01_file, rp03_file, item_text):
         return 0, [], []
     rp01 = _read_report(rp01_file, ["Pack Qty", "TI", "HI"])
     rp03 = _read_report(rp03_file, ["Total Pack Qty"])
-    item1, item3 = _item_column(rp01), _item_column(rp03)
+    item1, item3 = _item_column(rp01, "Item Name"), _item_column(rp03, "Item Code")
     if item1 is None:
-        raise ValueError("ไม่พบคอลัมน์ Item ใน RP01 (รองรับ Item Code, Item, Item Number, Item No หรือ SKU)")
+        raise ValueError("ไม่พบคอลัมน์ Item Name ใน RP01")
     if item3 is None:
-        raise ValueError("ไม่พบคอลัมน์ Item ใน RP03 (รองรับ Item Code, Item, Item Number, Item No หรือ SKU)")
+        raise ValueError("ไม่พบคอลัมน์ Item Code ใน RP03")
     rp01 = rp01.assign(
         _item=rp01[item1].map(lambda value: _norm_key(value).casefold()),
         _expected=pd.to_numeric(rp01[_column(rp01, "Pack Qty")], errors="coerce").fillna(0),
