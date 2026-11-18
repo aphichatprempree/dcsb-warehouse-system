@@ -761,6 +761,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     complete_night = st.session_state.get("complete_night", 4475)
     complete_morning = st.session_state.get("complete_morning", 0)
     extra_work = st.session_state.get("extra_work", 0)
+    complete_all = complete_night + complete_morning + extra_work
 
     pct_night_received = (complete_night / inv_all * 100) if inv_all > 0 else 0
     recv_start = st.session_state.get("recv_start", 473)
@@ -775,9 +776,9 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         f"""
     <div class="focus-grid">
         <div class="focus-card">
-        <div class="focus-label">📦 ยอดงาน Complete รับกะดึก</div>
-            <div class="focus-value">{complete_night:,} <span>Pallets</span></div>
-            <div class="focus-unit">ผลรวมงานสำเร็จในช่วงกะดึก</div>
+        <div class="focus-label">📦 ยอดงาน Complete รวมทั้งหมด</div>
+            <div class="focus-value">{complete_all:,} <span>Pallets</span></div>
+            <div class="focus-unit">รวมกะดึก + กะเช้า + งานนอกรอบ</div>
         </div>
         <div class="focus-card alert">
             <div class="focus-label">🚨 Supplier ที่ยังไม่ Check-in</div>
