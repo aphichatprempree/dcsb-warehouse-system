@@ -325,14 +325,22 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .report-cell { border-radius:12px; padding:6px 6px; text-align:center; background:#f1f4f9; box-shadow:var(--sh-sm); border:1.5px solid var(--line); min-height:68px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; gap:4px; }
 .report-label { color:#4d5a78; font-size:.78rem; line-height:1.25; font-weight:500; }
 .report-value { color:var(--ink); font-size:1.22rem; font-weight:700; line-height:1.2; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.report-wrap.compact { padding:4px 6px 6px; border-radius:16px; }
+.report-wrap.compact .report-head { padding:4px 8px 5px; margin-bottom:1px; }
+.report-wrap.compact .report-grid { gap:5px; padding:2px; }
+.report-wrap.compact .report-group { font-size:.82rem; padding:2px 2px 1px; }
+.report-wrap.compact .report-cell { min-height:58px; padding:4px 5px; border-radius:10px; gap:3px; }
+.report-wrap.compact .report-label { font-size:.72rem; line-height:1.16; }
+.report-wrap.compact .report-value { font-size:1.1rem; }
 .report-value.alert { color:var(--rose); }
 
 /* ---------- CHART CARDS ---------- */
 [class*="st-key-card"] { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border-radius:26px; box-shadow:var(--sh); padding:.8rem .9rem .6rem; border:2px solid var(--line-strong); }
 .chart-title { color:var(--ink); font-size:.92rem; font-weight:700; margin:0 0 4px; text-align:center; }
 .chart-sub { color:var(--muted); font-size:.7rem; text-align:center; margin-bottom:6px; padding-bottom:6px; border-bottom:1.5px dashed var(--line); }
-@media (max-width:1200px) { .report-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } .focus-grid { grid-template-columns:1fr; } }
-@media (max-width:700px) { .hero-title{font-size:1.25rem} .report-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} .focus-value{font-size:1.8rem} }
+@media (max-width:1200px) { .report-grid:not(.compact-grid) { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } .report-grid.compact-grid { grid-template-columns:repeat(6,minmax(0,1fr)) !important; } .focus-grid { grid-template-columns:1fr; } }
+@media (max-width:900px) { .report-grid.compact-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; } }
+@media (max-width:700px) { .hero-title{font-size:1.25rem} .report-grid:not(.compact-grid){grid-template-columns:repeat(2,minmax(0,1fr)) !important} .report-grid.compact-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} .focus-value{font-size:1.8rem} }
 
 /* ---------- EXPANDER + INPUTS ---------- */
 [data-testid="stExpander"] { background:linear-gradient(145deg,#eef2f8,#e1e7f0); border:2px solid var(--line-strong) !important; border-radius:22px; box-shadow:var(--sh-sm); }
@@ -560,7 +568,7 @@ def tube_chart(labels, values, base, height=320):
     return fig
 
 
-def report_table(title, date_str, time_str, items, cols):
+def report_table(title, date_str, time_str, items, cols, compact=False):
     rendered_cells = []
     metric_index = 0
     for item in items:
@@ -576,9 +584,9 @@ def report_table(title, date_str, time_str, items, cols):
         metric_index += 1
     cells = "".join(rendered_cells)
     return (
-        f'<div class="report-wrap"><div class="report-head">{title} {date_str}'
+        f'<div class="report-wrap{" compact" if compact else ""}"><div class="report-head">{title} {date_str}'
         f' <span class="report-date">{time_str}</span></div>'
-        f'<div class="report-grid" style="grid-template-columns: repeat({cols}, minmax(0, 1fr));">'
+        f'<div class="report-grid{" compact-grid" if compact else ""}" style="grid-template-columns: repeat({cols}, minmax(0, 1fr));">'
         f"{cells}</div></div>"
     )
 
@@ -806,7 +814,8 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             morning_date.strftime("%d/%m/%Y"),
             "(ตาม Window Time 00.00-23.59 น.)",
             report_values,
-            4,
+            6,
+            compact=True,
         ),
         unsafe_allow_html=True,
     )
