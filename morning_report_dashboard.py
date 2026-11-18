@@ -1,5 +1,6 @@
 import json
 import hashlib
+import math
 import re
 from pathlib import Path
 from datetime import date, datetime, time
@@ -222,9 +223,9 @@ def _lookup_reject_pallets(rp01_file, rp03_file, item_text):
     joined = joined.loc[valid].copy()
     joined["_reject_pack"] = (joined["_expected"] - joined["_received"]).clip(lower=0)
     total = (joined["_reject_pack"] / joined["_ti"] / joined["_hi"]).sum()
-    total = float(total)
+    total = math.ceil(float(total))
     invalid_items.extend(f"Item {item} มี TI/HI หลายชุด" for item in sorted(ambiguous_items))
-    return (int(total) if total.is_integer() else total), missing, invalid_items
+    return total, missing, invalid_items
 
 
 def _load_imported_metrics(files):
@@ -1201,7 +1202,7 @@ else:
                 "เลื่อนส่ง (Pallets)", value=float(hist_delayed), step=1.0, key="hist_delayed", on_change=_autosave_current_report
             )
             hist_not_po = st.number_input(
-                "Reject / ส่งไม่ครบตาม PO (Pallets)", value=float(hist_not_po), step=1.0, key="hist_not_po", on_change=_autosave_current_report
+                "Reject / ส่งไม่ครบตาม PO (Pallets)", value=math.ceil(float(hist_not_po)), step=1, key="hist_not_po", on_change=_autosave_current_report
             )
         with hc4:
             hist_not_billed = st.number_input(
