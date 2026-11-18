@@ -962,7 +962,7 @@ else:
         ("งานนอกรอบ Complete", hist_extra_label, False),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
         ("เลื่อนส่ง", f"{hist_delayed:,}", False),
-        ("ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
+        ("Reject ส่งไม่ครบตาม PO", f"{hist_not_po:,}", False),
         ("ยังไม่ยื่นบิล", f"{hist_not_billed:,}", False),
         ("งานไม่ได้รับทั้งหมด", f"{hist_not_recv:,}", True),
     ]
@@ -1002,7 +1002,7 @@ else:
             )
             st.plotly_chart(
                 radial_chart(
-                    ["ยังไม่ยื่นบิล", "ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
+                    ["ยังไม่ยื่นบิล", "Reject ส่งไม่ครบตาม PO", "เลื่อนส่ง"],
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
                     height=320,
@@ -1034,7 +1034,7 @@ else:
                 "เลื่อนส่ง", value=hist_delayed, step=1, key="hist_delayed", on_change=_autosave_current_report
             )
             hist_not_po = st.number_input(
-                "ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po", on_change=_autosave_current_report
+                "Reject ส่งไม่ครบตาม PO", value=hist_not_po, step=1, key="hist_not_po", on_change=_autosave_current_report
             )
         with hc4:
             hist_not_billed = st.number_input(
