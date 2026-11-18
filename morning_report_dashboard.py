@@ -167,41 +167,65 @@ def _lookup_reject_pallets(rp01_file, rp03_file, po_text):
     requested = set(_po_values(po_text))
     if not requested:
         return 0, [], []
-    rp01 = _read_report(rp01_file, ["P/O", "Item Code", "Pack Qty", "TI", "HI"])
-    rp03 = _read_report(rp03_file, ["Purchase Order", "Item Code", "Total Pack Qty"])
-    po1, item1 = _column(rp01, "P/O"), _column(rp01, "Item Code")
-    po3, item3 = _column(rp03, "Purchase Order"), _column(rp03, "Item Code")
+    rp01 = _read_report(rp01_file, ["P/O", "Pack Qty", "TI", "HI"])
+    rp03 = _read_report(rp03_file, ["Purchase Order", "Total Pack Qty"])
+    po1 = _column(rp01, "P/O")
+    po3 = _column(rp03, "Purchase Order")
+    item1 = next((c for c in rp01.columns if c.strip().casefold() == "item code"), None)
+    item3 = next((c for c in rp03.columns if c.strip().casefold() == "item code"), None)
     rp01 = rp01.assign(
         _po=rp01[po1].map(_norm_key),
-        _item=rp01[item1].map(_norm_key),
         _expected=pd.to_numeric(rp01[_column(rp01, "Pack Qty")], errors="coerce").fillna(0),
         _ti=pd.to_numeric(rp01[_column(rp01, "TI")], errors="coerce"),
         _hi=pd.to_numeric(rp01[_column(rp01, "HI")], errors="coerce"),
     )
     rp03 = rp03.assign(
         _po=rp03[po3].map(_norm_key),
-        _item=rp03[item3].map(_norm_key),
         _received=pd.to_numeric(rp03[_column(rp03, "Total Pack Qty")], errors="coerce").fillna(0),
     )
-    rp01 = rp01[rp01["_po"].isin(requested) & rp01["_item"].ne("")]
-    rp03 = rp03[rp03["_po"].isin(requested) & rp03["_item"].ne("")]
-    expected = rp01.groupby(["_po", "_item"], as_index=False).agg(
+    has_item_match = item1 is not None and item3 is not None
+    if has_item_match:
+        rp01["_item"] = rp01[item1].map(_norm_key)
+        rp03["_item"] = rp03[item3].map(_norm_key)
+        rp01 = rp01[rp01["_po"].isin(requested) & rp01["_item"].ne("")]
+        rp03 = rp03[rp03["_po"].isin(requested) & rp03["_item"].ne("")]
+        join_keys = ["_po", "_item"]
+    else:
+        # Some RP03 exports omit Item Code. Compare pack totals by PO only,
+        # and calculate only where that PO has one unambiguous TI/HI pair.
+        rp01 = rp01[rp01["_po"].isin(requested)]
+        rp03 = rp03[rp03["_po"].isin(requested)]
+        join_keys = ["_po"]
+    expected = rp01.groupby(join_keys, as_index=False).agg(
         _expected=("_expected", "sum"), _ti=("_ti", "first"), _hi=("_hi", "first")
     )
-    received = rp03.groupby(["_po", "_item"], as_index=False)["_received"].sum()
+    received = rp03.groupby(join_keys, as_index=False)["_received"].sum()
+    if not has_item_match:
+        ti_hi_counts = (
+            rp01[["_po", "_ti", "_hi"]]
+            .dropna(subset=["_ti", "_hi"])
+            .drop_duplicates()
+            .groupby("_po")
+            .size()
+        )
+        ambiguous_pos = set(ti_hi_counts[ti_hi_counts.gt(1)].index)
+        expected = expected[~expected["_po"].isin(ambiguous_pos)]
+    else:
+        ambiguous_pos = set()
     matched_pos = set(expected["_po"])
-    missing = sorted(requested - matched_pos)
-    joined = expected.merge(received, on=["_po", "_item"], how="left")
+    missing = sorted(requested - matched_pos - ambiguous_pos)
+    joined = expected.merge(received, on=join_keys, how="left")
     joined["_received"] = joined["_received"].fillna(0)
     valid = (
         joined["_ti"].notna() & joined["_ti"].gt(0)
         & joined["_hi"].notna() & joined["_hi"].gt(0)
     )
-    invalid_items = joined.loc[~valid, "_item"].drop_duplicates().tolist()
+    invalid_items = joined.loc[~valid, "_po" if not has_item_match else "_item"].drop_duplicates().tolist()
     joined = joined.loc[valid].copy()
     joined["_reject_pack"] = (joined["_expected"] - joined["_received"]).clip(lower=0)
     total = (joined["_reject_pack"] / joined["_ti"] / joined["_hi"]).sum()
     total = float(total)
+    invalid_items.extend(f"PO {po} มี TI/HI หลายชุด" for po in sorted(ambiguous_pos))
     return (int(total) if total.is_integer() else total), missing, invalid_items
 
 
@@ -1074,7 +1098,7 @@ else:
                         if reject_missing:
                             st.warning("PO Reject ที่ไม่พบใน RP01: " + ", ".join(reject_missing))
                         if reject_invalid:
-                            st.warning("มี Item Code ใน RP01 ที่ไม่มีค่า TI/HI ที่ใช้คำนวณ: " + ", ".join(reject_invalid))
+                            st.warning("มีรายการหรือ PO ที่ไม่มีค่า TI/HI ที่ใช้คำนวณ หรือมี TI/HI หลายชุดใน PO เดียว: " + ", ".join(reject_invalid))
                     except Exception as exc:
                         st.error(f"คำนวณ Reject ไม่สำเร็จ: {exc}")
             else:
