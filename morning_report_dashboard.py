@@ -779,6 +779,45 @@ def tube_chart(labels, values, base, height=320, palette=None):
     return fig
 
 
+def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250):
+    """Donut chart whose center emphasizes the total work not received."""
+    values = [max(0, float(hist_not_billed)), max(0, float(hist_not_po))]
+    labels = ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO"]
+    colors = ["#19385f", "#e2a02a"]
+    active = [(label, value, color) for label, value, color in zip(labels, values, colors) if value > 0]
+    if active:
+        labels, values, colors = map(list, zip(*active))
+    else:
+        labels, values, colors = ["ไม่มีงานค้าง"], [1], ["#dbe5f1"]
+
+    fig = go.Figure(go.Pie(
+        labels=labels, values=values, hole=.66, sort=False, direction="clockwise",
+        textinfo="none", marker=dict(colors=colors, line=dict(color="#ffffff", width=3)),
+        hovertemplate="%{label}<br>%{value:,.0f} Pallets (%{percent})<extra></extra>",
+        showlegend=bool(active),
+    ))
+    fig.add_annotation(
+        x=.5, y=.54, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
+        showarrow=False, font=dict(size=25, color="#c46b16", family=FONT),
+    )
+    fig.add_annotation(
+        x=.5, y=.41, xref="paper", yref="paper", text="Pallets ยังไม่ได้รับ",
+        showarrow=False, font=dict(size=11, color="#48658b", family=FONT),
+    )
+    fig.update_layout(
+        height=height, margin=dict(t=2, b=38, l=12, r=12),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT, color="#172c4b"),
+        legend=dict(
+            orientation="h", yanchor="top", y=-.02, xanchor="center", x=.5,
+            font=dict(size=10, color="#294d7d"), bgcolor="rgba(255,255,255,.72)",
+            bordercolor="#c6d7ec", borderwidth=1,
+        ),
+        showlegend=bool(active),
+    )
+    return fig
+
+
 def _shade_hex(color, factor=0.68):
     color = color.lstrip("#")
     channels = [int(color[i:i + 2], 16) for i in (0, 2, 4)]
@@ -1620,32 +1659,31 @@ else:
     with col_chart1:
         with st.container(key="card_hist_tube"):
             chart_card_title(
-                "📊 สรุปภาพรวมงานรับและงานค้างส่ง",
-                "เส้นประแสดง % เทียบงานรับทั้งหมด (16.10 น.)",
+                "📊 เปรียบเทียบยอดรับและสถานะงาน",
+                "แท่งแสดงจำนวน Pallets · % เทียบกับงานรับทั้งหมด (16.10 น.)",
             )
             st.plotly_chart(
-                tube_chart(
+                metric_bar_3d_chart(
                     ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับทั้งหมด"],
                     [hist_total_recv, hist_complete, hist_extra_chart, hist_not_recv],
-                    base=hist_total_recv,
+                    reference=hist_total_recv,
                     height=250,
-                    palette=["#172b4a", "#24518a", "#3b73b8", "#6d98cb"],
+                    palette=["#29476d", "#3d78bd", "#83a9d4", "#e2a02a"],
                 ),
                 use_container_width=True,
             )
     with col_chart2:
         with st.container(key="card_hist_radial"):
             chart_card_title(
-                "🚨 วิเคราะห์สาเหตุงานไม่ได้รับ",
-                "% เทียบงานไม่ได้รับทั้งหมด",
+                "🚨 สัดส่วนงานยังไม่ได้รับ",
+                f"รวม {hist_not_recv:,} Pallets · เลื่อนส่ง {_format_quantity(hist_delayed)} แสดงแยก",
             )
             st.plotly_chart(
-                radial_chart(
-                    ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO", "เลื่อนส่ง"],
-                    [hist_not_billed, hist_not_po, hist_delayed],
-                    base=hist_not_recv,
+                pending_donut_chart(
+                    hist_not_billed,
+                    hist_not_po,
+                    hist_not_recv,
                     height=250,
-                    palette=["#18365f", "#3269a8", "#6d9dd5"],
                 ),
                 use_container_width=True,
             )
