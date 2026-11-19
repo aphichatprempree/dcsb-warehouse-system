@@ -774,6 +774,60 @@ def tube_chart(labels, values, base, height=320, palette=None):
     return fig
 
 
+def _shade_hex(color, factor=0.68):
+    color = color.lstrip("#")
+    channels = [int(color[i:i + 2], 16) for i in (0, 2, 4)]
+    return "#" + "".join(f"{max(0, min(255, round(channel * factor))):02x}" for channel in channels)
+
+
+def metric_bar_3d_chart(labels, values, palette, reference=None, height=240):
+    """Raised horizontal bars with a shaded extrusion and a reference track."""
+    values = [max(0, float(value)) for value in values]
+    colors = [palette[i % len(palette)] for i in range(len(values))]
+    denominator = float(reference) if reference and reference > 0 else sum(values)
+    denominator = denominator if denominator > 0 else 1
+    track_max = max(max(values, default=0), float(reference or 0), 1) * 1.08
+    track_colors = ["#edf0f2"] * len(values)
+    percentages = [value / denominator * 100 for value in values]
+    value_text = [f"{int(v):,} · {p:.0f}%" if v.is_integer() else f"{v:,.1f} · {p:.0f}%" for v, p in zip(values, percentages)]
+    shadow_colors = [_shade_hex(color, .62) for color in colors]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=[track_max] * len(values), y=labels, orientation="h", width=.72,
+        marker=dict(color=track_colors, line=dict(color="#fff", width=2)),
+        hoverinfo="skip", showlegend=False,
+    ))
+    fig.add_trace(go.Bar(
+        x=values, y=labels, orientation="h", width=.66, offset=.08,
+        marker=dict(color=shadow_colors, line=dict(color="rgba(40,45,50,.16)", width=1)),
+        hoverinfo="skip", showlegend=False,
+    ))
+    fig.add_trace(go.Bar(
+        x=values, y=labels, orientation="h", width=.5, offset=0,
+        marker=dict(color=colors, line=dict(color="rgba(255,255,255,.94)", width=2)),
+        text=value_text, textposition="outside", cliponaxis=False,
+        textfont=dict(color=INK, size=12, family=FONT),
+        customdata=[[label, value, pct] for label, value, pct in zip(labels, values, percentages)],
+        hovertemplate="%{customdata[0]}<br>%{customdata[1]:,.0f} Pallets · %{customdata[2]:.1f}%<extra></extra>",
+        showlegend=False,
+    ))
+    fig.update_layout(
+        height=height, barmode="overlay", bargap=.28,
+        margin=dict(t=7, b=4, l=105, r=92),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT, color=INK), showlegend=False,
+        xaxis=dict(range=[0, track_max * 1.35], visible=False, fixedrange=True),
+        yaxis=dict(autorange="reversed", fixedrange=True, tickfont=dict(size=11, color=MUTED),
+                   showgrid=False, zeroline=False, ticks=""),
+    )
+    try:
+        fig.update_traces(marker_cornerradius=12, selector=dict(type="bar"))
+    except Exception:
+        pass
+    return fig
+
+
 def report_table(title, date_str, time_str, items, cols, compact=False, accent_colors=None):
     rendered_cells = []
     metric_index = 0
@@ -1286,12 +1340,12 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         with st.container(key="card_radial_1"):
             chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "% เทียบยอดประมาณการรับทั้งหมด")
             st.plotly_chart(
-                radial_chart(
+                metric_bar_3d_chart(
                     ["รับกะดึก", "รับกะเช้า", "คงเหลือทั้งหมด"],
                     [night_received, morning_received, total_remaining],
-                    base=inv_all,
-                    height=220,
                     palette=["#75a982", "#5d9568", "#bc5a5c"],
+                    reference=inv_all,
+                    height=220,
                 ),
                 use_container_width=True,
             )
@@ -1299,11 +1353,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         with st.container(key="card_radial_2"):
             chart_card_title("ยอดงาน Complete", "แยกตามช่วง Window Time")
             st.plotly_chart(
-                radial_chart(
+                metric_bar_3d_chart(
                     ["กะดึก", "กะเช้า", "นอกรอบ"],
                     [complete_night, complete_morning, extra_work],
-                    height=220,
                     palette=["#5d9568", "#75a982", "#896eb0"],
+                    height=220,
                 ),
                 use_container_width=True,
             )
@@ -1311,11 +1365,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
         with st.container(key="card_radial_3"):
             chart_card_title("สรุปงานรับคงเหลือทั้งหมด", "หน่วย Pallets แยกตามสถานะ")
             st.plotly_chart(
-                radial_chart(
+                metric_bar_3d_chart(
                     ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
                     [recv_start, in_transit, sup_night_missing, sup_morning_missing],
-                    height=220,
                     palette=["#c4832d", "#5d8fba", "#bc5a5c", "#a9666d"],
+                    height=240,
                 ),
                 use_container_width=True,
             )
