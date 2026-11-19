@@ -75,8 +75,8 @@ def _window_mask(frame, shift):
     col = _column(frame, "Window Time")
     minutes = frame[col].map(_minutes_since_midnight)
     if shift == "night":
-        return minutes.notna() & (minutes < 5 * 60)
-    return minutes.notna() & (minutes >= 5 * 60) & (minutes < 24 * 60)
+        return minutes.notna() & ((minutes >= 17 * 60) | (minutes < 5 * 60))
+    return minutes.notna() & (minutes >= 5 * 60) & (minutes < 17 * 60)
 
 
 def _load_morning_metrics(files):
