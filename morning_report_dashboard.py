@@ -540,6 +540,14 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 /* Keep Streamlit's reopen control visible when the sidebar is collapsed. */
 [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"] { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; top:.5rem !important; left:.5rem !important; z-index:10000 !important; }
 [data-testid="collapsedControl"] button, [data-testid="stSidebarCollapsedControl"] button { visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
+[data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"]:has(button[aria-label="Open sidebar"]),
+button[aria-label="Open sidebar"] {
+    display:flex !important; visibility:visible !important; opacity:1 !important;
+    position:fixed !important; top:.55rem !important; left:.55rem !important;
+    z-index:10000 !important; pointer-events:auto !important;
+}
+button[aria-label="Open sidebar"] { background:#fff !important; border:1px solid #8ea5c5 !important; border-radius:10px !important; box-shadow:0 3px 9px rgba(20,40,70,.22) !important; color:#233b5d !important; }
 [data-testid="stSidebarUserContent"] { padding-top:1rem; }
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.45rem; }
 [data-testid="stSidebar"] hr { display:none; }
