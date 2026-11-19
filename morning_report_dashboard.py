@@ -790,7 +790,7 @@ def metric_bar_3d_chart(labels, values, palette, reference=None, height=240):
     track_colors = ["#edf0f2"] * len(values)
     percentages = [value / denominator * 100 for value in values]
     value_text = [f"{int(v):,} · {p:.0f}%" if v.is_integer() else f"{v:,.1f} · {p:.0f}%" for v, p in zip(values, percentages)]
-    shadow_colors = [_shade_hex(color, .62) for color in colors]
+    shadow_colors = [_shade_hex(color, .48) for color in colors]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -803,14 +803,27 @@ def metric_bar_3d_chart(labels, values, palette, reference=None, height=240):
         marker=dict(color=shadow_colors, line=dict(color="rgba(40,45,50,.16)", width=1)),
         hoverinfo="skip", showlegend=False,
     ))
-    fig.add_trace(go.Bar(
-        x=values, y=labels, orientation="h", width=.5, offset=0,
-        marker=dict(color=colors, line=dict(color="rgba(255,255,255,.94)", width=2)),
-        text=value_text, textposition="outside", cliponaxis=False,
+    # Stack narrow adjacent sections inside each bar to create a dark-to-light
+    # gradient that follows the dashboard card accent color.
+    segment_count = 32
+    for segment in range(segment_count):
+        progress = segment / max(segment_count - 1, 1)
+        shade_factor = .13 + progress * 1.35
+        segment_colors = [_shade_hex(color, shade_factor) for color in colors]
+        fig.add_trace(go.Bar(
+            x=[value / segment_count for value in values],
+            base=[value * segment / segment_count for value in values],
+            y=labels, orientation="h", width=.5, offset=0,
+            marker=dict(color=segment_colors, line=dict(width=0)),
+            hoverinfo="skip", showlegend=False,
+        ))
+    fig.add_trace(go.Scatter(
+        x=[value + track_max * .025 for value in values], y=labels,
+        mode="text", text=value_text,
         textfont=dict(color="#17212b", size=17, family=FONT),
         customdata=[[label, value, pct] for label, value, pct in zip(labels, values, percentages)],
         hovertemplate="%{customdata[0]}<br>%{customdata[1]:,.0f} Pallets · %{customdata[2]:.1f}%<extra></extra>",
-        showlegend=False,
+        cliponaxis=False, showlegend=False,
     ))
     fig.update_layout(
         height=height, barmode="overlay", bargap=.28,
@@ -821,10 +834,6 @@ def metric_bar_3d_chart(labels, values, palette, reference=None, height=240):
         yaxis=dict(autorange="reversed", fixedrange=True, tickfont=dict(size=15, color="#17212b"),
                    showgrid=False, zeroline=False, ticks=""),
     )
-    try:
-        fig.update_traces(marker_cornerradius=12, selector=dict(type="bar"))
-    except Exception:
-        pass
     return fig
 
 
@@ -838,7 +847,9 @@ def report_table(title, date_str, time_str, items, cols, compact=False, accent_c
             continue
         label, value, alert = item
         label_key = label.casefold()
-        if "นอกรอบ" in label_key or "rp03" in label_key:
+        if "สรุปงานรับคงเหลือทั้งหมด" in label_key and "(pallets)" in label_key:
+            status_class = "status-remaining-total"
+        elif "นอกรอบ" in label_key or "rp03" in label_key:
             status_class = "status-special"
         elif "complete" in label_key:
             status_class = "status-complete"
@@ -1076,6 +1087,20 @@ body:has(.morning-theme) .report-cell.status-special { background:linear-gradien
 body:has(.morning-theme) .report-cell.status-special .report-value { color:#765d99; }
 body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
 body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#626a70; }
+body:has(.morning-theme) .report-group,
+body:has(.morning-theme) .report-cell .report-label,
+body:has(.morning-theme) .report-cell .report-value { color:#171717 !important; }
+body:has(.morning-theme) .report-cell.status-remaining-total {
+    background:linear-gradient(135deg,#fff 0%,#fff4f1 56%,#ffe0dc 100%) !important;
+    border:1px solid #df7775 !important; border-top:4px solid #c62931 !important;
+    box-shadow:0 0 0 1px rgba(198,41,49,.12),0 4px 12px rgba(174,35,42,.2),0 0 16px rgba(224,71,69,.16),inset 0 2px 0 rgba(255,255,255,.98),inset 0 -2px 4px rgba(174,35,42,.1) !important;
+}
+body:has(.morning-theme) .report-cell.status-remaining-total .report-value {
+    color:transparent !important; -webkit-text-fill-color:transparent !important;
+    background:linear-gradient(100deg,#171717 0%,#761a20 52%,#d62432 100%);
+    -webkit-background-clip:text; background-clip:text;
+    filter:drop-shadow(0 0 5px rgba(214,36,50,.28));
+}
 body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(125deg,#101713 0%,#142d20 48%,#176743 100%) !important; border-color:#63f5a6 !important; box-shadow:0 0 0 1px rgba(99,245,166,.3),0 0 12px rgba(70,255,160,.24),0 12px 26px rgba(10,57,34,.3),0 24px 42px rgba(10,57,34,.18),inset 0 2px 0 rgba(218,255,235,.24),inset 0 -3px 6px rgba(0,0,0,.32) !important; }
 body:has(.morning-theme) .focus-card.status-complete::after { background:radial-gradient(circle,rgba(116,255,181,.5),rgba(116,255,181,0) 72%); }
 body:has(.morning-theme) .focus-card.status-complete .focus-label,
@@ -1355,7 +1380,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                 metric_bar_3d_chart(
                     ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
                     [recv_start, in_transit, sup_night_missing, sup_morning_missing],
-                    palette=["#c4832d", "#5d8fba", "#bc5a5c", "#a9666d"],
+                    palette=["#e4a62e", "#5d9bcb", "#e63e2d", "#fa7a27"],
                     height=240,
                 ),
                 use_container_width=True,
