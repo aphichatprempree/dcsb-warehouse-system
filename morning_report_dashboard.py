@@ -807,18 +807,18 @@ def metric_bar_3d_chart(labels, values, palette, reference=None, height=240):
         x=values, y=labels, orientation="h", width=.5, offset=0,
         marker=dict(color=colors, line=dict(color="rgba(255,255,255,.94)", width=2)),
         text=value_text, textposition="outside", cliponaxis=False,
-        textfont=dict(color=INK, size=12, family=FONT),
+        textfont=dict(color="#17212b", size=17, family=FONT),
         customdata=[[label, value, pct] for label, value, pct in zip(labels, values, percentages)],
         hovertemplate="%{customdata[0]}<br>%{customdata[1]:,.0f} Pallets · %{customdata[2]:.1f}%<extra></extra>",
         showlegend=False,
     ))
     fig.update_layout(
         height=height, barmode="overlay", bargap=.28,
-        margin=dict(t=7, b=4, l=105, r=92),
+        margin=dict(t=10, b=8, l=138, r=148),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT, color=INK), showlegend=False,
-        xaxis=dict(range=[0, track_max * 1.35], visible=False, fixedrange=True),
-        yaxis=dict(autorange="reversed", fixedrange=True, tickfont=dict(size=11, color=MUTED),
+        xaxis=dict(range=[0, track_max * 1.48], visible=False, fixedrange=True),
+        yaxis=dict(autorange="reversed", fixedrange=True, tickfont=dict(size=15, color="#17212b"),
                    showgrid=False, zeroline=False, ticks=""),
     )
     try:
@@ -1274,6 +1274,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     complete_morning = st.session_state.get("complete_morning", 0)
     extra_work = st.session_state.get("extra_work", 0)
     complete_all = complete_night + complete_morning + extra_work
+    received_all = night_received + morning_received
 
     pct_night_received = (complete_night / inv_all * 100) if inv_all > 0 else 0
     recv_start = st.session_state.get("recv_start", 473)
@@ -1338,12 +1339,12 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     c1, c2, c3 = st.columns(3, gap="small")
     with c1:
         with st.container(key="card_radial_1"):
-            chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "% เทียบยอดประมาณการรับทั้งหมด")
+            chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "ยอดรับรวมเทียบ Inventory · แสดง % ของประมาณการ")
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["รับกะดึก", "รับกะเช้า", "คงเหลือทั้งหมด"],
-                    [night_received, morning_received, total_remaining],
-                    palette=["#75a982", "#5d9568", "#bc5a5c"],
+                    ["ประมาณการรับ", "งานรับรวม"],
+                    [inv_all, received_all],
+                    palette=["#8b9399", "#45d894"],
                     reference=inv_all,
                     height=220,
                 ),
@@ -1351,12 +1352,13 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
             )
     with c2:
         with st.container(key="card_radial_2"):
-            chart_card_title("ยอดงาน Complete", "แยกตามช่วง Window Time")
+            chart_card_title("ยอดงาน Complete", "ยอดรับรวมเทียบ Complete รวมทุกกะและงานนอกรอบ")
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["กะดึก", "กะเช้า", "นอกรอบ"],
-                    [complete_night, complete_morning, extra_work],
-                    palette=["#5d9568", "#75a982", "#896eb0"],
+                    ["งานรับรวม", "Complete รวม"],
+                    [received_all, complete_all],
+                    palette=["#8b9399", "#45d894"],
+                    reference=received_all,
                     height=220,
                 ),
                 use_container_width=True,
