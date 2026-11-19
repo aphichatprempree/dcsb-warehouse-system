@@ -1523,6 +1523,13 @@ else:
         body:has(.history-theme) .focus-card .focus-value { color:#fff !important; text-shadow:0 0 10px rgba(111,174,255,.32); }
         body:has(.history-theme) .focus-card .focus-unit,
         body:has(.history-theme) .focus-card .focus-value span { color:#b7d5f8 !important; }
+        body:has(.history-theme) .focus-card.status-complete { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%) !important; border-color:#6e9ed8 !important; box-shadow:0 0 0 1px rgba(83,142,216,.22),0 8px 18px rgba(18,48,88,.24),0 18px 32px rgba(18,48,88,.15),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28) !important; }
+        body:has(.history-theme) .focus-card.alert { background:linear-gradient(135deg,#fff 0%,#eaf3ff 58%,#d8e9ff 100%) !important; border-color:#eaa341 !important; box-shadow:0 0 0 1px rgba(234,163,65,.18),0 7px 17px rgba(54,82,118,.16),0 0 16px rgba(245,178,63,.2),inset 0 2px 0 rgba(255,255,255,.98),inset 0 -3px 5px rgba(64,91,127,.08) !important; }
+        body:has(.history-theme) .focus-card.alert::after { background:radial-gradient(circle,rgba(255,197,76,.62),rgba(255,146,45,0) 72%); }
+        body:has(.history-theme) .focus-card.alert .focus-label { color:#142a49 !important; }
+        body:has(.history-theme) .focus-card.alert .focus-unit,
+        body:has(.history-theme) .focus-card.alert .focus-value span { color:#354b67 !important; text-shadow:none; }
+        body:has(.history-theme) .focus-card.alert .focus-value .focus-number { color:transparent !important; -webkit-text-fill-color:transparent !important; background:linear-gradient(100deg,#171717 0%,#a94316 48%,#e3a11b 78%,#f2c94c 100%); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 1px 2px rgba(176,92,22,.2)); }
         body:has(.history-theme) .report-wrap { background:linear-gradient(150deg,#fff,#edf4ff); border-color:#b8cce5; box-shadow:0 2px 4px rgba(27,54,89,.07),0 12px 28px rgba(34,73,122,.15),0 24px 44px rgba(34,73,122,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(45,83,130,.05); }
         body:has(.history-theme) .report-head { border-color:#c6d7ec; color:#172c4b; }
         body:has(.history-theme) .report-date,
@@ -1553,7 +1560,7 @@ else:
             </div>
             <div class="focus-card alert">
                 <div class="focus-label">🌙 งานไม่ได้รับทั้งหมด</div>
-                <div class="focus-value">{hist_not_recv:,} <span>Pallets</span></div>
+                <div class="focus-value"><span class="focus-number">{hist_not_recv:,}</span> <span>Pallets</span></div>
                 <div class="focus-unit">รวม Reject / ส่งไม่ครบ PO และยังไม่ยื่นบิล</div>
             </div>
         </div>
