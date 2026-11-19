@@ -882,8 +882,8 @@ body:has(.morning-theme) [data-testid="stSidebar"] { background:#fff; border-rig
 body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #eef0f1; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
 body:has(.morning-theme) .sb-name { color:var(--ink); }
 body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:var(--muted); }
-body:has(.morning-theme) .sb-logo { background:linear-gradient(145deg,#ff64d8 0%,#d629ff 48%,#8c2dff 100%); border:1px solid #f4a2ff; border-radius:14px; box-shadow:0 0 0 2px rgba(236,77,255,.2),0 0 12px rgba(228,45,255,.7),0 0 27px rgba(170,45,255,.45),inset 0 2px 0 rgba(255,255,255,.55),inset 0 -3px 7px rgba(88,0,145,.35); }
-body:has(.morning-theme) .sb-logo svg { stroke:#fff; filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 7px rgba(255,92,243,.9)); }
+body:has(.morning-theme) .sb-logo { background:linear-gradient(145deg,#21110d 0%,#791b12 26%,#e43a19 52%,#ff851f 76%,#ffd653 100%); border:1px solid #ffc15b; border-radius:14px; box-shadow:0 0 0 2px rgba(255,105,35,.18),0 0 12px rgba(239,65,25,.58),0 0 24px rgba(255,117,28,.38),0 0 32px rgba(255,193,66,.24),inset 0 2px 0 rgba(255,245,211,.6),inset 0 -3px 7px rgba(91,24,8,.38); }
+body:has(.morning-theme) .sb-logo svg { stroke:#fff9e7; filter:drop-shadow(0 0 3px rgba(255,255,237,.98)) drop-shadow(0 0 7px rgba(255,158,48,.9)) drop-shadow(0 0 10px rgba(255,71,25,.62)); }
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { background:transparent; border:1px solid transparent; box-shadow:none; border-radius:12px; }
 body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
