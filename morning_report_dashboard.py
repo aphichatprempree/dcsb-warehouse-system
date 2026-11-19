@@ -77,11 +77,11 @@ def _minutes_since_midnight(value):
 def _window_mask(frame, shift):
     col = _column(frame, "Window Time")
     minutes = frame[col].map(_minutes_since_midnight)
-    # Shift windows are half-open intervals: night 17:00–05:00,
-    # morning 05:00–17:00. This keeps boundary rows in exactly one shift.
+    # Shift windows are half-open intervals: night 18:00–07:00,
+    # morning 07:00–18:00. This keeps boundary rows in exactly one shift.
     if shift == "night":
-        return minutes.notna() & ((minutes >= 17 * 60) | (minutes < 5 * 60))
-    return minutes.notna() & (minutes >= 5 * 60) & (minutes < 17 * 60)
+        return minutes.notna() & ((minutes >= 18 * 60) | (minutes < 7 * 60))
+    return minutes.notna() & (minutes >= 7 * 60) & (minutes < 18 * 60)
 
 
 def _load_morning_metrics(files):
@@ -92,13 +92,15 @@ def _load_morning_metrics(files):
             rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
             result["report_date"] = _report_date_from_frame(rp01)
             result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
-            # Match the receiving estimate allocation: split total Pallets by
-            # Follow the supplied estimate app's allocation formula and its
-            # reference weights; these are ratio weights, not fixed output values.
-            night_target, morning_target = 3879, 1663
-            night_ratio = night_target / (night_target + morning_target)
-            result["night_received"] = round(result["inv_all"] * night_ratio, 2)
-            result["morning_received"] = round(result["inv_all"] - result["night_received"], 2)
+            # Divide RP01 Pallets Qty by its Window Time: night 18:00–06:59,
+            # morning 07:00–17:59. Unreadable times go to morning so totals
+            # still reconcile to the full RP01 Pallets Qty.
+            night_mask = _window_mask(rp01, "night")
+            morning_mask = _window_mask(rp01, "morning")
+            result["night_received"] = _sum_numeric(rp01, "Pallets Qty", night_mask)
+            morning_window_total = _sum_numeric(rp01, "Pallets Qty", morning_mask)
+            unclassified = max(0, result["inv_all"] - result["night_received"] - morning_window_total)
+            result["morning_received"] = morning_window_total + unclassified
         if files["rp42"] is not None:
             rp42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC", "Window Time", "CHECK_IN_USER"])
             status = rp42[_column(rp42, "ASN_STATUS_DESC")].astype(str).str.strip().str.casefold()
@@ -1372,19 +1374,19 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     report_values = [
         ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
-        ("ยอดงานรับกะดึก (17.00-05.00)", f"{night_received:,}", False),
-        ("ยอดงานรับกะเช้า (05.00-17.00)", f"{morning_received:,}", False),
+        ("ยอดงานรับกะดึก (18.00-06.00)", f"{night_received:,}", False),
+        ("ยอดงานรับกะเช้า (07.00-18.00)", f"{morning_received:,}", False),
         ("group", "งาน Complete"),
-        ("ยอดงาน Complete รับกะดึก (17.00-05.00)", f"{complete_night:,}", False),
-        ("ยอดงาน Complete รับกะเช้า (05.00-17.00)", f"{complete_morning:,}", False),
+        ("ยอดงาน Complete รับกะดึก (18.00-06.00)", f"{complete_night:,}", False),
+        ("ยอดงาน Complete รับกะเช้า (07.00-18.00)", f"{complete_morning:,}", False),
         ("งาน Complete นอกรอบ (RP03)", f"{extra_work:,}", False),
         ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
         ("group", "งานรับคงเหลือ"),
         ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f"{total_remaining:,}", False),
         ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f"{recv_start:,}", False),
         ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f"{in_transit:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (17.00-05.00)", f"{sup_night_missing:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (05.00-17.00)", f"{sup_morning_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (18.00-06.00)", f"{sup_night_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (07.00-18.00)", f"{sup_morning_missing:,}", False),
         ("(%) Supplier ค้างรับรวม", f"{pct_remaining:.2f}%", True),
     ]
     st.markdown(
