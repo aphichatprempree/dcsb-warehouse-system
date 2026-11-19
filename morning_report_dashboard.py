@@ -927,6 +927,9 @@ def _render_upload_section(page_id, title, expanded):
         return uploads
 
 
+# Reserve the first sidebar slot for the active report date. The date is
+# populated after reading the uploads, but remains visually above the importers.
+report_date_slot = st.sidebar.empty()
 st.sidebar.markdown('<div class="sb-label">Import ไฟล์แยกตามหน้า</div>', unsafe_allow_html=True)
 _page_uploads = {
     "history": _render_upload_section("history", "🕘 รายงานย้อนหลัง", _page_id == "history"),
@@ -964,10 +967,11 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     elif "m_date_input" not in st.session_state:
         latest = REPORT_STORE.get("morning_latest_date")
         st.session_state["m_date_input"] = date.fromisoformat(latest) if latest else date.today()
-    st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-    morning_date = st.sidebar.date_input(
-        "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
-    )
+    with report_date_slot.container():
+        st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+        morning_date = st.date_input(
+            "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
+        )
     selected_morning_date = morning_date.strftime("%Y-%m-%d")
     record = _get_report_record(selected_morning_date, page="morning")
     for field, default_value in MORNING_DEFAULTS.items():
@@ -997,10 +1001,11 @@ else:
     elif "h_date_input" not in st.session_state:
         latest = REPORT_STORE.get("latest_date")
         st.session_state["h_date_input"] = date.fromisoformat(latest) if latest else date.today()
-    st.sidebar.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-    hist_date = st.sidebar.date_input(
-        "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
-    )
+    with report_date_slot.container():
+        st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+        hist_date = st.date_input(
+            "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
+        )
     selected_report_date = hist_date.strftime("%Y-%m-%d")
     record = _get_report_record(selected_report_date, page="history")
     for field, default_value in REPORT_DEFAULTS.items():
