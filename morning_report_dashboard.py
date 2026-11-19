@@ -77,10 +77,11 @@ def _minutes_since_midnight(value):
 def _window_mask(frame, shift):
     col = _column(frame, "Window Time")
     minutes = frame[col].map(_minutes_since_midnight)
-    # Shift windows are half-open intervals: night 18:00–07:00,
-    # morning 07:00–18:00. This keeps boundary rows in exactly one shift.
+    # Window Time shifts: night 18:00–06:00 (inclusive of 06:00), morning
+    # 07:00–18:00. 18:00 belongs to night (start of night shift) so each
+    # row lands in at most one shift. Times 06:01–06:59 fall in neither.
     if shift == "night":
-        return minutes.notna() & ((minutes >= 18 * 60) | (minutes < 7 * 60))
+        return minutes.notna() & ((minutes >= 18 * 60) | (minutes <= 6 * 60))
     return minutes.notna() & (minutes >= 7 * 60) & (minutes < 18 * 60)
 
 
@@ -92,9 +93,9 @@ def _load_morning_metrics(files):
             rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
             result["report_date"] = _report_date_from_frame(rp01)
             result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
-            # Divide RP01 Pallets Qty by its Window Time: night 18:00–06:59,
-            # morning 07:00–17:59. Unreadable times go to morning so totals
-            # still reconcile to the full RP01 Pallets Qty.
+            # Divide RP01 Pallets Qty by its Window Time: night 18:00–06:00,
+            # morning 07:00–18:00. Unreadable times (and 06:01–06:59) go to
+            # morning so totals still reconcile to the full RP01 Pallets Qty.
             night_mask = _window_mask(rp01, "night")
             morning_mask = _window_mask(rp01, "morning")
             result["night_received"] = _sum_numeric(rp01, "Pallets Qty", night_mask)
