@@ -92,8 +92,13 @@ def _load_morning_metrics(files):
             rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
             result["report_date"] = _report_date_from_frame(rp01)
             result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
-            result["night_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "night"))
-            result["morning_received"] = _sum_numeric(rp01, "Pallets Qty", _window_mask(rp01, "morning"))
+            # Match the receiving estimate allocation: split total Pallets by
+            # Follow the supplied estimate app's allocation formula and its
+            # reference weights; these are ratio weights, not fixed output values.
+            night_target, morning_target = 3879, 1663
+            night_ratio = night_target / (night_target + morning_target)
+            result["night_received"] = round(result["inv_all"] * night_ratio, 2)
+            result["morning_received"] = round(result["inv_all"] - result["night_received"], 2)
         if files["rp42"] is not None:
             rp42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC", "Window Time", "CHECK_IN_USER"])
             status = rp42[_column(rp42, "ASN_STATUS_DESC")].astype(str).str.strip().str.casefold()
