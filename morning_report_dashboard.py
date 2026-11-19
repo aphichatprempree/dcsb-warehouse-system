@@ -1022,8 +1022,11 @@ body:has(.morning-theme) .report-cell.status-special { background:linear-gradien
 body:has(.morning-theme) .report-cell.status-special .report-value { color:#765d99; }
 body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
 body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#626a70; }
-body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(130deg,#e8f8ed 0%,#c9efd5 52%,#b4e5c5 100%) !important; border-color:#a3d9b4 !important; box-shadow:0 2px 4px rgba(50,104,68,.1),0 12px 24px rgba(64,143,88,.18),0 22px 38px rgba(64,143,88,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(64,143,88,.07) !important; }
-body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#34784b !important; }
+body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(125deg,#101713 0%,#142d20 48%,#176743 100%) !important; border-color:#63f5a6 !important; box-shadow:0 0 0 1px rgba(99,245,166,.3),0 0 12px rgba(70,255,160,.24),0 12px 26px rgba(10,57,34,.3),0 24px 42px rgba(10,57,34,.18),inset 0 2px 0 rgba(218,255,235,.24),inset 0 -3px 6px rgba(0,0,0,.32) !important; }
+body:has(.morning-theme) .focus-card.status-complete::after { background:radial-gradient(circle,rgba(116,255,181,.5),rgba(116,255,181,0) 72%); }
+body:has(.morning-theme) .focus-card.status-complete .focus-label,
+body:has(.morning-theme) .focus-card.status-complete .focus-unit { color:#d9ffea !important; }
+body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#7dffb5 !important; text-shadow:0 0 8px rgba(94,255,170,.5); }
 body:has(.morning-theme) .focus-card.alert { background:linear-gradient(115deg,#21110d 0%,#791b12 34%,#d52f20 67%,#f47725 100%) !important; border-color:#f18a52 !important; box-shadow:0 2px 4px rgba(75,24,14,.16),0 12px 24px rgba(163,48,22,.25),0 22px 38px rgba(163,48,22,.12),inset 0 2px 0 rgba(255,230,199,.55),inset 0 -3px 6px rgba(44,13,9,.3) !important; }
 body:has(.morning-theme) .focus-card.alert .focus-label,
 body:has(.morning-theme) .focus-card.alert .focus-unit { color:#fff1e5 !important; }
