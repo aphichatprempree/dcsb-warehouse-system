@@ -780,47 +780,35 @@ def tube_chart(labels, values, base, height=320, palette=None):
 
 
 def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250):
-    """Donut chart whose center emphasizes the total work not received."""
+    """Flat, readable donut chart highlighting the total work not received."""
     values = [max(0, float(hist_not_billed)), max(0, float(hist_not_po))]
-    labels = ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO"]
-    colors = ["#171717", "#df3025"]
-    active = [(label, value, color) for label, value, color in zip(labels, values, colors) if value > 0]
+    raw_labels = ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO"]
+    colors = ["#d83225", "#f47724"]
+    active = [(label, value, color) for label, value, color in zip(raw_labels, values, colors) if value > 0]
     if active:
-        labels, values, colors = map(list, zip(*active))
+        raw_labels, values, colors = map(list, zip(*active))
     else:
-        labels, values, colors = ["ไม่มีงานค้าง"], [1], ["#dbe5f1"]
+        raw_labels, values, colors = ["ไม่มีงานค้าง"], [1], ["#e6eaf0"]
+    display_labels = [f"{label} · {int(value):,}" for label, value in zip(raw_labels, values)]
 
-    fig = go.Figure()
-    # A dark, slightly lowered copy under the main ring adds a raised 3D edge.
-    fig.add_trace(go.Pie(
-        labels=labels, values=values, hole=.66, sort=False, direction="clockwise",
-        domain=dict(x=[.08, .92], y=[.01, .89]),
-        marker=dict(colors=["#080706", "#791710"][:len(values)], line=dict(color="#090807", width=1)),
-        hoverinfo="skip", showlegend=False,
-    ))
-    fig.add_trace(go.Pie(
-        labels=labels, values=values, hole=.66, sort=False, direction="clockwise",
-        domain=dict(x=[.08, .92], y=[.08, .96]), pull=[.012 if label == "ยังไม่ยื่นบิล" else .04 for label in labels],
-        textinfo="none", marker=dict(colors=colors, line=dict(color="#ffc928", width=2.5)),
-        hovertemplate="%{label}<br>%{value:,.0f} Pallets (%{percent})<extra></extra>",
+    fig = go.Figure(go.Pie(
+        labels=display_labels, values=values, customdata=raw_labels,
+        hole=.64, sort=False, direction="clockwise",
+        textinfo="none", marker=dict(colors=colors, line=dict(color="#fff5ec", width=2)),
+        hovertemplate="%{customdata}<br>%{value:,.0f} Pallets (%{percent})<extra></extra>",
         showlegend=bool(active),
     ))
-    # Dark center medallion with a warm neon rim highlights the total.
-    fig.add_shape(type="circle", xref="paper", yref="paper", x0=.388, y0=.355, x1=.612, y1=.579,
-                  fillcolor="#080706", line=dict(color="#6c260e", width=2), layer="above")
-    fig.add_shape(type="circle", xref="paper", yref="paper", x0=.388, y0=.375, x1=.612, y1=.599,
-                  fillcolor="#16100d", line=dict(color="#ff8a1e", width=2), layer="above")
     fig.add_annotation(
         x=.5, y=.68, xref="paper", yref="paper", text="⚠ งานไม่ได้รับทั้งหมด",
-        showarrow=False, font=dict(size=10, color="#ff9c24", family=FONT),
+        showarrow=False, font=dict(size=13, color="#dc4b20", family=FONT),
     )
     fig.add_annotation(
-        x=.5, y=.50, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
-        showarrow=False, font=dict(size=25, color="#ffe24a", family=FONT),
+        x=.5, y=.51, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
+        showarrow=False, font=dict(size=32, color="#c92f25", family=FONT),
     )
     fig.add_annotation(
-        x=.5, y=.415, xref="paper", yref="paper", text="Pallets",
-        showarrow=False, font=dict(size=10, color="#ffb44a", family=FONT),
+        x=.5, y=.39, xref="paper", yref="paper", text="Pallets",
+        showarrow=False, font=dict(size=13, color="#402c28", family=FONT),
     )
     fig.update_layout(
         height=height, margin=dict(t=2, b=38, l=12, r=12),
@@ -828,7 +816,7 @@ def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250)
         font=dict(family=FONT, color="#172c4b"),
         legend=dict(
             orientation="h", yanchor="top", y=-.02, xanchor="center", x=.5,
-            font=dict(size=10, color="#294d7d"), bgcolor="rgba(255,255,255,.72)",
+            font=dict(size=12, color="#34241f"), bgcolor="rgba(255,250,246,.92)",
             bordercolor="#c6d7ec", borderwidth=1,
         ),
         showlegend=bool(active),
@@ -1616,7 +1604,6 @@ else:
         body:has(.history-theme) .chart-title { color:#172c4b; }
         body:has(.history-theme) .chart-sub { color:#48658b; border-color:#c6d7ec; }
         body:has(.history-theme) [class*="st-key-card_hist"] { padding:.35rem .45rem .2rem; border-radius:20px; }
-        body:has(.history-theme) [class*="st-key-card_hist_radial"] { border-color:#f2a536; box-shadow:0 0 0 1px rgba(244,153,38,.18),0 5px 12px rgba(42,27,16,.13),0 0 18px rgba(247,112,28,.2),inset 0 2px 0 rgba(255,255,255,.96); }
         body:has(.history-theme) .chart-title { font-size:.8rem; margin-bottom:1px; }
         body:has(.history-theme) .chart-sub { font-size:.62rem; margin-bottom:2px; padding-bottom:2px; }
         </style>
