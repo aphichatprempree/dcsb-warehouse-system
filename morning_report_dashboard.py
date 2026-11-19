@@ -580,20 +580,6 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .stButton > button:hover, [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover { transform:translateY(-2px); box-shadow:0 6px 0 rgba(50,58,174,.48),0 12px 19px rgba(58,61,255,.26),inset 0 1px 0 rgba(255,255,255,.5); }
 .sb-chip { box-shadow:0 3px 6px rgba(87,103,129,.12),inset 0 1px 0 rgba(255,255,255,.82); }
 .sb-chip.on { box-shadow:0 5px 12px rgba(58,61,255,.28),inset 0 1px 0 rgba(255,255,255,.45); }
-.report-cell.status-complete { background:linear-gradient(160deg,#e1f4e5,#f7fcf8) !important; border-color:#b5dbbb !important; border-top-color:#78bd83 !important; }
-.report-cell.status-complete .report-value { color:#39764a; }
-.report-cell.status-progress { background:linear-gradient(160deg,#fff4cc,#fffdf4) !important; border-color:#ead995 !important; border-top-color:#d6bd56 !important; }
-.report-cell.status-progress .report-value { color:#827126; }
-.report-cell.status-transit { background:linear-gradient(160deg,#e1f1fc,#f7fbff) !important; border-color:#b4d4ea !important; border-top-color:#79b4db !important; }
-.report-cell.status-transit .report-value { color:#3e7294; }
-.report-cell.status-alert { background:linear-gradient(160deg,#fbe5ea,#fff8f9) !important; border-color:#e9bdc7 !important; border-top-color:#d88a9d !important; }
-.report-cell.status-alert .report-value { color:#9a5362; }
-.report-cell.status-special { background:linear-gradient(160deg,#eee8f8,#faf8fd) !important; border-color:#d0c3e5 !important; border-top-color:#a18ac7 !important; }
-.report-cell.status-special .report-value { color:#6d5b8b; }
-.report-cell.status-neutral { background:linear-gradient(160deg,#f0f1f2,#fafafa) !important; border-color:#d5d9dc !important; border-top-color:#aab1b6 !important; }
-.report-cell.status-neutral .report-value { color:#596168; }
-.focus-card.status-complete { background:linear-gradient(145deg,#eff9f0,#d9efdd) !important; border-color:#b5dbbb !important; }
-.focus-card.status-complete .focus-value { color:#39764a !important; }
 .report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
 .report-cell.status-complete .report-value { color:#477d52; }
 .report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
@@ -719,7 +705,6 @@ def tube_chart(labels, values, base, height=320, palette=None):
     fig.add_trace(
         go.Bar(
             x=xs, y=[bg_max] * n, width=0.68,
-            marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#d7b99b", width=3)),
             marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#d8dde1", width=3)),
             hoverinfo="skip", showlegend=False,
         )
@@ -747,7 +732,6 @@ def tube_chart(labels, values, base, height=320, palette=None):
     fig.add_trace(
         go.Scatter(
             x=xs, y=pcts, yaxis="y2", mode="lines+markers",
-            line=dict(color="#bd7445", width=2, dash="dash"),
             line=dict(color="#929ba3", width=2, dash="dash"),
             marker=dict(size=12, symbol="square", color=colors, line=dict(color="white", width=2)),
             hovertemplate="%{y:.1f}%<extra></extra>", showlegend=False,
@@ -759,7 +743,6 @@ def tube_chart(labels, values, base, height=320, palette=None):
         dict(
             x=x, y=p, xref="x", yref="y2", text=f"<b>{p:.0f}%</b>",
             showarrow=False, yshift=28, bgcolor="white",
-            bordercolor="#cc9b6f", borderwidth=1.5, borderpad=3,
             bordercolor="#c7cdd2", borderwidth=1.5, borderpad=3,
             font=dict(size=11, color=INK, family=FONT),
         )
@@ -863,7 +846,6 @@ sheet_selection = st.sidebar.radio(
     label_visibility="collapsed",
 )
 if sheet_selection == NAV[1]:
-    RAINBOW = ["#78bd83", "#d6bd56", "#79b4db", "#d88a9d", "#a18ac7", "#aab1b6", "#92c99a", "#ca788d"]
     RAINBOW = ["#5d9568", "#c4832d", "#5d8fba", "#bc5a5c", "#896eb0", "#9ba2a7", "#75a982", "#a9666d"]
     CHART_TRACK = "rgba(236,239,240,0.9)"
     CHART_INNER = "rgba(255,255,255,0.95)"
@@ -1028,22 +1010,6 @@ body:has(.morning-theme) .stButton > button:hover { background:linear-gradient(1
 body:has(.morning-theme) .sb-foot { border-color:#eed2b7; }
 body:has(.morning-theme) .sb-chip { background:#fffaf4; border-color:#ecd4be; color:#8a6350; }
 body:has(.morning-theme) .sb-chip.on { background:linear-gradient(120deg,#a91e24,#e94f24 58%,#f6a22c); border-color:#d6552d; color:#fffaf3; }
-body:has(.morning-theme) .report-cell.status-complete { background:linear-gradient(160deg,#e1f4e5,#f7fcf8) !important; border-color:#b5dbbb !important; border-top-color:#78bd83 !important; }
-body:has(.morning-theme) .report-cell.status-complete .report-value { color:#39764a; }
-body:has(.morning-theme) .report-cell.status-progress { background:linear-gradient(160deg,#fff4cc,#fffdf4) !important; border-color:#ead995 !important; border-top-color:#d6bd56 !important; }
-body:has(.morning-theme) .report-cell.status-progress .report-value { color:#827126; }
-body:has(.morning-theme) .report-cell.status-transit { background:linear-gradient(160deg,#e1f1fc,#f7fbff) !important; border-color:#b4d4ea !important; border-top-color:#79b4db !important; }
-body:has(.morning-theme) .report-cell.status-transit .report-value { color:#3e7294; }
-body:has(.morning-theme) .report-cell.status-alert { background:linear-gradient(160deg,#fbe5ea,#fff8f9) !important; border-color:#e9bdc7 !important; border-top-color:#d88a9d !important; }
-body:has(.morning-theme) .report-cell.status-alert .report-value { color:#9a5362; }
-body:has(.morning-theme) .report-cell.status-special { background:linear-gradient(160deg,#eee8f8,#faf8fd) !important; border-color:#d0c3e5 !important; border-top-color:#a18ac7 !important; }
-body:has(.morning-theme) .report-cell.status-special .report-value { color:#6d5b8b; }
-body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#f0f1f2,#fafafa) !important; border-color:#d5d9dc !important; border-top-color:#aab1b6 !important; }
-body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#596168; }
-body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(145deg,#eff9f0,#d9efdd) !important; border-color:#b5dbbb !important; }
-body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#39764a !important; }
-body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff7f8,#fbe5ea 70%,#f4d4dc) !important; border-color:#e9bdc7 !important; box-shadow:0 2px 3px rgba(105,53,64,.08),0 12px 24px rgba(160,89,106,.16),0 22px 38px rgba(160,89,106,.07),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(160,89,106,.06) !important; }
-body:has(.morning-theme) .focus-card.alert .focus-value { color:#9a5362 !important; }
 body:has(.morning-theme) .report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
 body:has(.morning-theme) .report-cell.status-complete .report-value { color:#477d52; }
 body:has(.morning-theme) .report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
@@ -1320,7 +1286,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     [night_received, morning_received, total_remaining],
                     base=inv_all,
                     height=220,
-                    palette=["#92c99a", "#78bd83", "#d88a9d"],
                     palette=["#75a982", "#5d9568", "#bc5a5c"],
                 ),
                 use_container_width=True,
@@ -1333,7 +1298,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     ["กะดึก", "กะเช้า", "นอกรอบ"],
                     [complete_night, complete_morning, extra_work],
                     height=220,
-                    palette=["#78bd83", "#92c99a", "#a18ac7"],
                     palette=["#5d9568", "#75a982", "#896eb0"],
                 ),
                 use_container_width=True,
@@ -1346,7 +1310,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
                     [recv_start, in_transit, sup_night_missing, sup_morning_missing],
                     height=220,
-                    palette=["#d6bd56", "#79b4db", "#d88a9d", "#ca788d"],
                     palette=["#c4832d", "#5d8fba", "#bc5a5c", "#a9666d"],
                 ),
                 use_container_width=True,
@@ -1520,7 +1483,6 @@ else:
                     [hist_total_recv, hist_complete, hist_extra_chart, hist_not_recv],
                     base=hist_total_recv,
                     height=320,
-                    palette=["#aab1b6", "#78bd83", "#a18ac7", "#d88a9d"],
                     palette=["#9ba2a7", "#5d9568", "#896eb0", "#bc5a5c"],
                 ),
                 use_container_width=True,
@@ -1537,7 +1499,6 @@ else:
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
                     height=320,
-                    palette=["#d88a9d", "#ca788d", "#d6bd56"],
                     palette=["#bc5a5c", "#a9666d", "#c4832d"],
                 ),
                 use_container_width=True,
