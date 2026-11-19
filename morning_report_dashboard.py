@@ -1530,6 +1530,7 @@ else:
         body:has(.history-theme) .focus-card.alert .focus-unit,
         body:has(.history-theme) .focus-card.alert .focus-value span { color:#354b67 !important; text-shadow:none; }
         body:has(.history-theme) .focus-card.alert .focus-value .focus-number { color:transparent !important; -webkit-text-fill-color:transparent !important; background:linear-gradient(100deg,#171717 0%,#a94316 48%,#e3a11b 78%,#f2c94c 100%); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 1px 2px rgba(176,92,22,.2)); }
+        body:has(.history-theme) .focus-card.alert .focus-value .focus-number { color:transparent !important; -webkit-text-fill-color:transparent !important; font-size:inherit !important; font-weight:inherit !important; line-height:inherit !important; background:linear-gradient(100deg,#171717 0%,#a94316 48%,#e3a11b 78%,#f2c94c 100%); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 1px 2px rgba(176,92,22,.2)); }
         body:has(.history-theme) .report-wrap { background:linear-gradient(150deg,#fff,#edf4ff); border-color:#b8cce5; box-shadow:0 2px 4px rgba(27,54,89,.07),0 12px 28px rgba(34,73,122,.15),0 24px 44px rgba(34,73,122,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(45,83,130,.05); }
         body:has(.history-theme) .report-head { border-color:#c6d7ec; color:#172c4b; }
         body:has(.history-theme) .report-date,
