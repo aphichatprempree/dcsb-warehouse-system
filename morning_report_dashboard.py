@@ -64,16 +64,21 @@ def _minutes_since_midnight(value):
         return value.hour * 60 + value.minute
     if isinstance(value, (int, float)) and 0 <= float(value) < 1:
         return int(round(float(value) * 24 * 60))
-    match = re.search(r"(\d{1,2}):(\d{2})", str(value).strip())
+    # RP exports may store Window Time as either 17:00 or 17.00 (sometimes
+    # followed by the end of the range, e.g. 17.00-05.00).
+    match = re.search(r"(?<!\d)(\d{1,2})\s*[:.]\s*(\d{2})(?!\d)", str(value).strip())
     if not match:
         return None
     hour, minute = int(match.group(1)), int(match.group(2))
-    return hour * 60 + minute if hour <= 24 and minute < 60 else None
+    valid_time = minute < 60 and (hour < 24 or (hour == 24 and minute == 0))
+    return hour * 60 + minute if valid_time else None
 
 
 def _window_mask(frame, shift):
     col = _column(frame, "Window Time")
     minutes = frame[col].map(_minutes_since_midnight)
+    # Shift windows are half-open intervals: night 17:00–05:00,
+    # morning 05:00–17:00. This keeps boundary rows in exactly one shift.
     if shift == "night":
         return minutes.notna() & ((minutes >= 17 * 60) | (minutes < 5 * 60))
     return minutes.notna() & (minutes >= 5 * 60) & (minutes < 17 * 60)
@@ -1317,19 +1322,19 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     report_values = [
         ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
-        ("ยอดงานรับกะดึก (ทั้งหมด)", f"{night_received:,}", False),
-        ("ยอดงานรับกะเช้า (ทั้งหมด)", f"{morning_received:,}", False),
+        ("ยอดงานรับกะดึก (17.00-05.00)", f"{night_received:,}", False),
+        ("ยอดงานรับกะเช้า (05.00-17.00)", f"{morning_received:,}", False),
         ("group", "งาน Complete"),
-        ("ยอดงาน Complete รับกะดึก", f"{complete_night:,}", False),
-        ("ยอดงาน Complete รับกะเช้า", f"{complete_morning:,}", False),
+        ("ยอดงาน Complete รับกะดึก (17.00-05.00)", f"{complete_night:,}", False),
+        ("ยอดงาน Complete รับกะเช้า (05.00-17.00)", f"{complete_morning:,}", False),
         ("งาน Complete นอกรอบ (RP03)", f"{extra_work:,}", False),
         ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
         ("group", "งานรับคงเหลือ"),
         ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f"{total_remaining:,}", False),
         ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f"{recv_start:,}", False),
         ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f"{in_transit:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก", f"{sup_night_missing:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า", f"{sup_morning_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (17.00-05.00)", f"{sup_night_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (05.00-17.00)", f"{sup_morning_missing:,}", False),
         ("(%) Supplier ค้างรับรวม", f"{pct_remaining:.2f}%", True),
     ]
     st.markdown(
@@ -1501,15 +1506,73 @@ else:
     hist_pct_not_recv = (
         (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
     )
+    hist_complete_all = hist_complete + hist_extra_chart
+    hist_complete_all_label = "ตรวจสอบคีย์" if hist_extra is None else f"{hist_complete_all:,}"
+
+    st.markdown(
+        """
+        <style>
+        body:has(.history-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); }
+        body:has(.history-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:6px 4px 2px; margin:0 0 4px; border-radius:0; }
+        body:has(.history-theme) .hero-kicker { color:#48658b; }
+        body:has(.history-theme) .hero-title, body:has(.history-theme) .section-title { color:#172c4b; }
+        body:has(.history-theme) .section-title::before { background:linear-gradient(160deg,#101b32,#24579b 65%,#80b5f2); box-shadow:0 2px 7px rgba(31,75,135,.3); }
+        body:has(.history-theme) .focus-card { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%); border:1px solid #6e9ed8; box-shadow:0 0 0 1px rgba(83,142,216,.2),0 8px 18px rgba(18,48,88,.22),0 18px 32px rgba(18,48,88,.14),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28); }
+        body:has(.history-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(150,197,255,.38),rgba(150,197,255,0) 72%); pointer-events:none; }
+        body:has(.history-theme) .focus-card .focus-label { color:#e1efff; }
+        body:has(.history-theme) .focus-card .focus-value { color:#fff !important; text-shadow:0 0 10px rgba(111,174,255,.32); }
+        body:has(.history-theme) .focus-card .focus-unit,
+        body:has(.history-theme) .focus-card .focus-value span { color:#b7d5f8 !important; }
+        body:has(.history-theme) .report-wrap { background:linear-gradient(150deg,#fff,#edf4ff); border-color:#b8cce5; box-shadow:0 2px 4px rgba(27,54,89,.07),0 12px 28px rgba(34,73,122,.15),0 24px 44px rgba(34,73,122,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(45,83,130,.05); }
+        body:has(.history-theme) .report-head { border-color:#c6d7ec; color:#172c4b; }
+        body:has(.history-theme) .report-date,
+        body:has(.history-theme) .report-group { color:#294d7d; }
+        body:has(.history-theme) .report-group { border-color:#c6d7ec; }
+        body:has(.history-theme) .report-cell { background:linear-gradient(145deg,#fff 0%,#eaf2fd 100%) !important; border-color:#c2d3e9 !important; border-top-color:#477bb9 !important; box-shadow:0 3px 7px rgba(27,54,89,.12),inset 0 2px 0 rgba(255,255,255,.96); }
+        body:has(.history-theme) .report-label { color:#233d60 !important; }
+        body:has(.history-theme) .report-value { color:#142a49 !important; }
+        body:has(.history-theme) .report-cell.status-alert { background:linear-gradient(130deg,#0b1426 0%,#17345d 55%,#2b62a5 100%) !important; border-color:#6c9ed8 !important; border-top-color:#8ec2ff !important; box-shadow:0 0 0 1px rgba(83,142,216,.14),0 5px 13px rgba(18,48,88,.2),inset 0 2px 0 rgba(216,236,255,.24); }
+        body:has(.history-theme) .report-cell.status-alert .report-label,
+        body:has(.history-theme) .report-cell.status-alert .report-value { color:#f5f9ff !important; }
+        body:has(.history-theme) [class*="st-key-card"] { background:linear-gradient(145deg,#fff 0%,#e9f2ff 100%); border-color:#b7cce6; box-shadow:0 3px 8px rgba(27,54,89,.11),0 12px 24px rgba(34,73,122,.12),inset 0 2px 0 rgba(255,255,255,.96); }
+        body:has(.history-theme) .chart-title { color:#172c4b; }
+        body:has(.history-theme) .chart-sub { color:#48658b; border-color:#c6d7ec; }
+        </style>
+        <div class="history-theme" aria-hidden="true"></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="focus-grid">
+            <div class="focus-card status-complete">
+                <div class="focus-label">📦 งาน Complete รวมทั้งหมด</div>
+                <div class="focus-value">{hist_complete_all_label} <span>Pallets</span></div>
+                <div class="focus-unit">รวมงาน Complete (22.00 น.) และงานนอกรอบ</div>
+            </div>
+            <div class="focus-card alert">
+                <div class="focus-label">🌙 งานไม่ได้รับทั้งหมด</div>
+                <div class="focus-value">{hist_not_recv:,} <span>Pallets</span></div>
+                <div class="focus-unit">รวม Reject / ส่งไม่ครบ PO และยังไม่ยื่นบิล</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<div class="section-title">ตารางสรุปรายงาน</div>', unsafe_allow_html=True
     )
     hist_report_values = [
+        ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
+        ("group", "งาน Complete"),
         ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
         ("งานนอกรอบ Complete", hist_extra_label, False),
+        ("งาน Complete รวม", hist_complete_all_label, False),
+        ("group", "งานค้างส่ง"),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
         ("เลื่อนส่ง", _format_quantity(hist_delayed), False),
         ("Reject / ส่งไม่ครบตาม PO", _format_quantity(hist_not_po), False),
@@ -1522,7 +1585,8 @@ else:
             hist_date.strftime("%d/%m/%Y"),
             "(00.00-22.00 น.)",
             hist_report_values,
-            5,
+            6,
+            compact=True,
         ),
         unsafe_allow_html=True,
     )
@@ -1541,7 +1605,7 @@ else:
                     [hist_total_recv, hist_complete, hist_extra_chart, hist_not_recv],
                     base=hist_total_recv,
                     height=320,
-                    palette=["#9ba2a7", "#5d9568", "#896eb0", "#bc5a5c"],
+                    palette=["#172b4a", "#24518a", "#3b73b8", "#6d98cb"],
                 ),
                 use_container_width=True,
             )
@@ -1557,7 +1621,7 @@ else:
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
                     height=320,
-                    palette=["#bc5a5c", "#a9666d", "#c4832d"],
+                    palette=["#18365f", "#3269a8", "#6d9dd5"],
                 ),
                 use_container_width=True,
             )
