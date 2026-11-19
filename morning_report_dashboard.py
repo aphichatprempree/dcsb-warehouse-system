@@ -1512,10 +1512,15 @@ else:
     st.markdown(
         """
         <style>
+        body:has(.history-theme) [data-testid="stMainBlockContainer"] { padding-top:.35rem; padding-bottom:.4rem; }
+        body:has(.history-theme) [data-testid="stVerticalBlock"] { gap:.42rem; }
         body:has(.history-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); }
-        body:has(.history-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:6px 4px 2px; margin:0 0 4px; border-radius:0; }
-        body:has(.history-theme) .hero-kicker { color:#48658b; }
-        body:has(.history-theme) .hero-title, body:has(.history-theme) .section-title { color:#172c4b; }
+        body:has(.history-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:1px 4px 0; margin:0; border-radius:0; }
+        body:has(.history-theme) .hero-kicker { color:#48658b; font-size:.55rem; }
+        body:has(.history-theme) .hero-title { color:#172c4b; font-size:1.45rem; margin:0; }
+        body:has(.history-theme) .hero-subtitle { color:#48658b; font-size:.68rem; margin:0; }
+        body:has(.history-theme) .hero-bar { display:none; }
+        body:has(.history-theme) .section-title { color:#172c4b; font-size:.88rem; margin:5px 0 2px; padding-bottom:0; }
         body:has(.history-theme) .section-title::before { background:linear-gradient(160deg,#101b32,#24579b 65%,#80b5f2); box-shadow:0 2px 7px rgba(31,75,135,.3); }
         body:has(.history-theme) .focus-card { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%); border:1px solid #6e9ed8; box-shadow:0 0 0 1px rgba(83,142,216,.2),0 8px 18px rgba(18,48,88,.22),0 18px 32px rgba(18,48,88,.14),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28); }
         body:has(.history-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(150,197,255,.38),rgba(150,197,255,0) 72%); pointer-events:none; }
@@ -1523,6 +1528,11 @@ else:
         body:has(.history-theme) .focus-card .focus-value { color:#fff !important; text-shadow:0 0 10px rgba(111,174,255,.32); }
         body:has(.history-theme) .focus-card .focus-unit,
         body:has(.history-theme) .focus-card .focus-value span { color:#b7d5f8 !important; }
+        body:has(.history-theme) .focus-grid { gap:8px; margin:1px 0 2px; }
+        body:has(.history-theme) .focus-card { padding:8px 16px 7px; border-radius:18px; }
+        body:has(.history-theme) .focus-label { font-size:.72rem; }
+        body:has(.history-theme) .focus-value { font-size:1.8rem; line-height:1.15; margin:1px 0; }
+        body:has(.history-theme) .focus-unit { font-size:.62rem; }
         body:has(.history-theme) .focus-card.status-complete { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%) !important; border-color:#6e9ed8 !important; box-shadow:0 0 0 1px rgba(83,142,216,.22),0 8px 18px rgba(18,48,88,.24),0 18px 32px rgba(18,48,88,.15),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28) !important; }
         body:has(.history-theme) .focus-card.alert { background:linear-gradient(135deg,#fff 0%,#eaf3ff 58%,#d8e9ff 100%) !important; border-color:#eaa341 !important; box-shadow:0 0 0 1px rgba(234,163,65,.18),0 7px 17px rgba(54,82,118,.16),0 0 16px rgba(245,178,63,.2),inset 0 2px 0 rgba(255,255,255,.98),inset 0 -3px 5px rgba(64,91,127,.08) !important; }
         body:has(.history-theme) .focus-card.alert::after { background:radial-gradient(circle,rgba(255,197,76,.62),rgba(255,146,45,0) 72%); }
@@ -1535,12 +1545,22 @@ else:
         body:has(.history-theme) .report-date,
         body:has(.history-theme) .report-group { color:#294d7d; }
         body:has(.history-theme) .report-group { border-color:#c6d7ec; }
+        body:has(.history-theme) .report-wrap.compact { padding:2px 4px 4px; border-radius:18px; }
+        body:has(.history-theme) .report-wrap.compact .report-head { padding:2px 6px 3px; margin-bottom:0; font-size:.82rem; }
+        body:has(.history-theme) .report-wrap.compact .report-grid { gap:3px; padding:1px; }
+        body:has(.history-theme) .report-wrap.compact .report-group { font-size:.68rem; line-height:1.08; padding:0 2px 1px; }
+        body:has(.history-theme) .report-wrap.compact .report-cell { min-height:46px; padding:2px 3px; border-radius:8px; gap:1px; }
+        body:has(.history-theme) .report-wrap.compact .report-label { font-size:.66rem; line-height:1.08; }
+        body:has(.history-theme) .report-wrap.compact .report-value { font-size:.95rem; }
         body:has(.history-theme) .report-cell { background:linear-gradient(145deg,#fff 0%,#eaf2fd 100%) !important; border-color:#c2d3e9 !important; border-top-color:#477bb9 !important; box-shadow:0 3px 7px rgba(27,54,89,.12),inset 0 2px 0 rgba(255,255,255,.96); }
         body:has(.history-theme) .report-label { color:#233d60 !important; }
         body:has(.history-theme) .report-value { color:#142a49 !important; }
         body:has(.history-theme) [class*="st-key-card"] { background:linear-gradient(145deg,#fff 0%,#e9f2ff 100%); border-color:#b7cce6; box-shadow:0 3px 8px rgba(27,54,89,.11),0 12px 24px rgba(34,73,122,.12),inset 0 2px 0 rgba(255,255,255,.96); }
         body:has(.history-theme) .chart-title { color:#172c4b; }
         body:has(.history-theme) .chart-sub { color:#48658b; border-color:#c6d7ec; }
+        body:has(.history-theme) [class*="st-key-card_hist"] { padding:.35rem .45rem .2rem; border-radius:20px; }
+        body:has(.history-theme) .chart-title { font-size:.8rem; margin-bottom:1px; }
+        body:has(.history-theme) .chart-sub { font-size:.62rem; margin-bottom:2px; padding-bottom:2px; }
         </style>
         <div class="history-theme" aria-hidden="true"></div>
         """,
@@ -1608,7 +1628,7 @@ else:
                     ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับทั้งหมด"],
                     [hist_total_recv, hist_complete, hist_extra_chart, hist_not_recv],
                     base=hist_total_recv,
-                    height=320,
+                    height=250,
                     palette=["#172b4a", "#24518a", "#3b73b8", "#6d98cb"],
                 ),
                 use_container_width=True,
@@ -1624,7 +1644,7 @@ else:
                     ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO", "เลื่อนส่ง"],
                     [hist_not_billed, hist_not_po, hist_delayed],
                     base=hist_not_recv,
-                    height=320,
+                    height=250,
                     palette=["#18365f", "#3269a8", "#6d9dd5"],
                 ),
                 use_container_width=True,
