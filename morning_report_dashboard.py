@@ -594,6 +594,20 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 .report-cell.status-neutral .report-value { color:#596168; }
 .focus-card.status-complete { background:linear-gradient(145deg,#eff9f0,#d9efdd) !important; border-color:#b5dbbb !important; }
 .focus-card.status-complete .focus-value { color:#39764a !important; }
+.report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
+.report-cell.status-complete .report-value { color:#477d52; }
+.report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
+.report-cell.status-progress .report-value { color:#9d6925; }
+.report-cell.status-transit { background:linear-gradient(160deg,#fff,#f7f9fc) !important; border-color:#dde5ed !important; border-top-color:#5d8fba !important; }
+.report-cell.status-transit .report-value { color:#4a779c; }
+.report-cell.status-alert { background:linear-gradient(160deg,#fff,#fcf7f7) !important; border-color:#ecdede !important; border-top-color:#bc5a5c !important; }
+.report-cell.status-alert .report-value { color:#a64d4f; }
+.report-cell.status-special { background:linear-gradient(160deg,#fff,#f9f7fc) !important; border-color:#e5dfed !important; border-top-color:#896eb0 !important; }
+.report-cell.status-special .report-value { color:#765d99; }
+.report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
+.report-cell.status-neutral .report-value { color:#626a70; }
+.focus-card.status-complete { background:linear-gradient(145deg,#fff,#f4faf5) !important; border-color:#d8e5da !important; }
+.focus-card.status-complete .focus-value { color:#477d52 !important; }
 </style>
 
 """,
@@ -706,6 +720,7 @@ def tube_chart(labels, values, base, height=320, palette=None):
         go.Bar(
             x=xs, y=[bg_max] * n, width=0.68,
             marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#d7b99b", width=3)),
+            marker=dict(color="rgba(255,255,255,0.95)", line=dict(color="#d8dde1", width=3)),
             hoverinfo="skip", showlegend=False,
         )
     )
@@ -733,6 +748,7 @@ def tube_chart(labels, values, base, height=320, palette=None):
         go.Scatter(
             x=xs, y=pcts, yaxis="y2", mode="lines+markers",
             line=dict(color="#bd7445", width=2, dash="dash"),
+            line=dict(color="#929ba3", width=2, dash="dash"),
             marker=dict(size=12, symbol="square", color=colors, line=dict(color="white", width=2)),
             hovertemplate="%{y:.1f}%<extra></extra>", showlegend=False,
         )
@@ -744,6 +760,7 @@ def tube_chart(labels, values, base, height=320, palette=None):
             x=x, y=p, xref="x", yref="y2", text=f"<b>{p:.0f}%</b>",
             showarrow=False, yshift=28, bgcolor="white",
             bordercolor="#cc9b6f", borderwidth=1.5, borderpad=3,
+            bordercolor="#c7cdd2", borderwidth=1.5, borderpad=3,
             font=dict(size=11, color=INK, family=FONT),
         )
         for x, p in zip(xs, pcts)
@@ -847,6 +864,7 @@ sheet_selection = st.sidebar.radio(
 )
 if sheet_selection == NAV[1]:
     RAINBOW = ["#78bd83", "#d6bd56", "#79b4db", "#d88a9d", "#a18ac7", "#aab1b6", "#92c99a", "#ca788d"]
+    RAINBOW = ["#5d9568", "#c4832d", "#5d8fba", "#bc5a5c", "#896eb0", "#9ba2a7", "#75a982", "#a9666d"]
     CHART_TRACK = "rgba(236,239,240,0.9)"
     CHART_INNER = "rgba(255,255,255,0.95)"
     CHART_GAP = "#ffffff"
@@ -1026,6 +1044,22 @@ body:has(.morning-theme) .focus-card.status-complete { background:linear-gradien
 body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#39764a !important; }
 body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff7f8,#fbe5ea 70%,#f4d4dc) !important; border-color:#e9bdc7 !important; box-shadow:0 2px 3px rgba(105,53,64,.08),0 12px 24px rgba(160,89,106,.16),0 22px 38px rgba(160,89,106,.07),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(160,89,106,.06) !important; }
 body:has(.morning-theme) .focus-card.alert .focus-value { color:#9a5362 !important; }
+body:has(.morning-theme) .report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
+body:has(.morning-theme) .report-cell.status-complete .report-value { color:#477d52; }
+body:has(.morning-theme) .report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
+body:has(.morning-theme) .report-cell.status-progress .report-value { color:#9d6925; }
+body:has(.morning-theme) .report-cell.status-transit { background:linear-gradient(160deg,#fff,#f7f9fc) !important; border-color:#dde5ed !important; border-top-color:#5d8fba !important; }
+body:has(.morning-theme) .report-cell.status-transit .report-value { color:#4a779c; }
+body:has(.morning-theme) .report-cell.status-alert { background:linear-gradient(160deg,#fff,#fcf7f7) !important; border-color:#ecdede !important; border-top-color:#bc5a5c !important; }
+body:has(.morning-theme) .report-cell.status-alert .report-value { color:#a64d4f; }
+body:has(.morning-theme) .report-cell.status-special { background:linear-gradient(160deg,#fff,#f9f7fc) !important; border-color:#e5dfed !important; border-top-color:#896eb0 !important; }
+body:has(.morning-theme) .report-cell.status-special .report-value { color:#765d99; }
+body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
+body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#626a70; }
+body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(145deg,#fff,#f4faf5) !important; border-color:#d8e5da !important; }
+body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#477d52 !important; }
+body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff,#fcf7f7 70%,#f6ebeb) !important; border-color:#ecdede !important; box-shadow:0 2px 3px rgba(60,42,42,.06),0 12px 24px rgba(120,72,72,.12),0 22px 38px rgba(120,72,72,.05),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(120,72,72,.04) !important; }
+body:has(.morning-theme) .focus-card.alert .focus-value { color:#a64d4f !important; }
 
 /* compact sizing for the morning page */
 .focus-grid { gap:10px; margin:3px 0; }
@@ -1287,6 +1321,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     base=inv_all,
                     height=220,
                     palette=["#92c99a", "#78bd83", "#d88a9d"],
+                    palette=["#75a982", "#5d9568", "#bc5a5c"],
                 ),
                 use_container_width=True,
             )
@@ -1299,6 +1334,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     [complete_night, complete_morning, extra_work],
                     height=220,
                     palette=["#78bd83", "#92c99a", "#a18ac7"],
+                    palette=["#5d9568", "#75a982", "#896eb0"],
                 ),
                 use_container_width=True,
             )
@@ -1311,6 +1347,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
                     [recv_start, in_transit, sup_night_missing, sup_morning_missing],
                     height=220,
                     palette=["#d6bd56", "#79b4db", "#d88a9d", "#ca788d"],
+                    palette=["#c4832d", "#5d8fba", "#bc5a5c", "#a9666d"],
                 ),
                 use_container_width=True,
             )
@@ -1484,6 +1521,7 @@ else:
                     base=hist_total_recv,
                     height=320,
                     palette=["#aab1b6", "#78bd83", "#a18ac7", "#d88a9d"],
+                    palette=["#9ba2a7", "#5d9568", "#896eb0", "#bc5a5c"],
                 ),
                 use_container_width=True,
             )
@@ -1500,6 +1538,7 @@ else:
                     base=hist_not_recv,
                     height=320,
                     palette=["#d88a9d", "#ca788d", "#d6bd56"],
+                    palette=["#bc5a5c", "#a9666d", "#c4832d"],
                 ),
                 use_container_width=True,
             )
