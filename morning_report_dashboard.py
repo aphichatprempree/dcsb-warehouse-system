@@ -537,6 +537,9 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 [data-testid="stSidebarContent"] { padding:0 1rem 1rem; }
 [data-testid="stSidebarHeader"] { position:absolute; top:.4rem; right:.4rem; z-index:5; height:auto; padding:0; width:auto; background:transparent; }
 [data-testid="stSidebarHeader"] button { color:var(--muted); }
+/* Keep Streamlit's reopen control visible when the sidebar is collapsed. */
+[data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"] { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; top:.5rem !important; left:.5rem !important; z-index:10000 !important; }
+[data-testid="collapsedControl"] button, [data-testid="stSidebarCollapsedControl"] button { visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
 [data-testid="stSidebarUserContent"] { padding-top:1rem; }
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.45rem; }
 [data-testid="stSidebar"] hr { display:none; }
