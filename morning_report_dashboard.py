@@ -535,19 +535,19 @@ h1,h2,h3 { color:var(--ink); letter-spacing:-.02em; }
 /* ---------- SIDEBAR (soft light) ---------- */
 [data-testid="stSidebar"] { background:linear-gradient(185deg,#eaeff6,#dde4ee); border-right:2px solid var(--line-strong); box-shadow:8px 0 24px rgba(163,177,198,.35); }
 [data-testid="stSidebarContent"] { padding:0 1rem 1rem; }
-[data-testid="stSidebarHeader"] { position:absolute; top:.4rem; right:.4rem; z-index:5; height:auto; padding:0; width:auto; background:transparent; }
+[data-testid="stSidebarHeader"] { position:relative; top:auto; right:auto; z-index:10001; height:2.5rem; padding:.35rem .4rem; width:100%; display:flex; justify-content:flex-end; background:transparent; box-sizing:border-box; }
 [data-testid="stSidebarHeader"] button { color:var(--muted); }
 /* Keep Streamlit's reopen control visible when the sidebar is collapsed. */
-[data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"] { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; top:.5rem !important; left:.5rem !important; z-index:10000 !important; }
-[data-testid="collapsedControl"] button, [data-testid="stSidebarCollapsedControl"] button { visibility:visible !important; opacity:1 !important; pointer-events:auto !important; }
 [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"]:has(button[aria-label="Open sidebar"]),
+[data-testid="stSidebarCollapsedControl"]:has(button[aria-label="Open sidebar"]),
 button[aria-label="Open sidebar"] {
     display:flex !important; visibility:visible !important; opacity:1 !important;
     position:fixed !important; top:.55rem !important; left:.55rem !important;
     z-index:10000 !important; pointer-events:auto !important;
 }
-button[aria-label="Open sidebar"] { background:#fff !important; border:1px solid #8ea5c5 !important; border-radius:10px !important; box-shadow:0 3px 9px rgba(20,40,70,.22) !important; color:#233b5d !important; }
+button[aria-label="Open sidebar"] { background:linear-gradient(145deg,#2027c8,#397dff) !important; border:2px solid #fff !important; border-radius:10px !important; box-shadow:0 3px 10px rgba(25,48,140,.4),0 0 0 1px rgba(43,83,220,.45) !important; color:#fff !important; }
+button[aria-label="Open sidebar"] svg { color:#fff !important; fill:#fff !important; stroke:#fff !important; }
+button[aria-label="Open sidebar"]:hover { background:linear-gradient(145deg,#161da8,#2368e8) !important; box-shadow:0 5px 14px rgba(25,48,140,.5),0 0 0 2px rgba(58,61,255,.22) !important; }
 [data-testid="stSidebarUserContent"] { padding-top:1rem; }
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.45rem; }
 [data-testid="stSidebar"] hr { display:none; }
