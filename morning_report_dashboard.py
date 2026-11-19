@@ -783,7 +783,7 @@ def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250)
     """Flat, readable donut chart highlighting the total work not received."""
     values = [max(0, float(hist_not_billed)), max(0, float(hist_not_po))]
     raw_labels = ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO"]
-    colors = ["#d83225", "#f47724"]
+    colors = ["#fff9e8", "#ffd43b"]
     active = [(label, value, color) for label, value, color in zip(raw_labels, values, colors) if value > 0]
     if active:
         raw_labels, values, colors = map(list, zip(*active))
@@ -794,13 +794,13 @@ def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250)
     fig = go.Figure(go.Pie(
         labels=display_labels, values=values, customdata=raw_labels,
         hole=.64, sort=False, direction="clockwise",
-        textinfo="none", marker=dict(colors=colors, line=dict(color="#fff5ec", width=2)),
+        textinfo="none", marker=dict(colors=colors, line=dict(color="#c62828", width=2.5)),
         hovertemplate="%{customdata}<br>%{value:,.0f} Pallets (%{percent})<extra></extra>",
         showlegend=bool(active),
     ))
     fig.add_annotation(
         x=.5, y=.68, xref="paper", yref="paper", text="⚠ งานไม่ได้รับทั้งหมด",
-        showarrow=False, font=dict(size=13, color="#dc4b20", family=FONT),
+        showarrow=False, font=dict(size=13, color="#c62828", family=FONT),
     )
     fig.add_annotation(
         x=.5, y=.51, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
