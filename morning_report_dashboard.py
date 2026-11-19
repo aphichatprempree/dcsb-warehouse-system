@@ -783,7 +783,7 @@ def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250)
     """Donut chart whose center emphasizes the total work not received."""
     values = [max(0, float(hist_not_billed)), max(0, float(hist_not_po))]
     labels = ["ยังไม่ยื่นบิล", "Reject / ส่งไม่ครบ PO"]
-    colors = ["#19385f", "#e2a02a"]
+    colors = ["#171717", "#d83232"]
     active = [(label, value, color) for label, value, color in zip(labels, values, colors) if value > 0]
     if active:
         labels, values, colors = map(list, zip(*active))
@@ -797,12 +797,16 @@ def pending_donut_chart(hist_not_billed, hist_not_po, hist_not_recv, height=250)
         showlegend=bool(active),
     ))
     fig.add_annotation(
-        x=.5, y=.54, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
-        showarrow=False, font=dict(size=25, color="#c46b16", family=FONT),
+        x=.5, y=.68, xref="paper", yref="paper", text="⚠ งานไม่ได้รับทั้งหมด",
+        showarrow=False, font=dict(size=10, color="#e47718", family=FONT),
     )
     fig.add_annotation(
-        x=.5, y=.41, xref="paper", yref="paper", text="Pallets ยังไม่ได้รับ",
-        showarrow=False, font=dict(size=11, color="#48658b", family=FONT),
+        x=.5, y=.52, xref="paper", yref="paper", text=f"<b>{hist_not_recv:,}</b>",
+        showarrow=False, font=dict(size=25, color="#c62828", family=FONT),
+    )
+    fig.add_annotation(
+        x=.5, y=.39, xref="paper", yref="paper", text="Pallets",
+        showarrow=False, font=dict(size=10, color="#262626", family=FONT),
     )
     fig.update_layout(
         height=height, margin=dict(t=2, b=38, l=12, r=12),
@@ -1659,24 +1663,24 @@ else:
     with col_chart1:
         with st.container(key="card_hist_tube"):
             chart_card_title(
-                "📊 เปรียบเทียบยอดรับและสถานะงาน",
+                "📊 เปรียบเทียบยอดรับและงาน Complete",
                 "แท่งแสดงจำนวน Pallets · % เทียบกับงานรับทั้งหมด (16.10 น.)",
             )
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ", "งานไม่ได้รับทั้งหมด"],
-                    [hist_total_recv, hist_complete, hist_extra_chart, hist_not_recv],
+                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ"],
+                    [hist_total_recv, hist_complete, hist_extra_chart],
                     reference=hist_total_recv,
                     height=250,
-                    palette=["#29476d", "#3d78bd", "#83a9d4", "#e2a02a"],
+                    palette=["#29476d", "#3d78bd", "#83a9d4"],
                 ),
                 use_container_width=True,
             )
     with col_chart2:
         with st.container(key="card_hist_radial"):
             chart_card_title(
-                "🚨 สัดส่วนงานยังไม่ได้รับ",
-                f"รวม {hist_not_recv:,} Pallets · เลื่อนส่ง {_format_quantity(hist_delayed)} แสดงแยก",
+                "🚨 งานไม่ได้รับทั้งหมด · สัดส่วน",
+                f"เลื่อนส่ง {_format_quantity(hist_delayed)} Pallets แสดงแยกจากยอดนี้",
             )
             st.plotly_chart(
                 pending_donut_chart(
