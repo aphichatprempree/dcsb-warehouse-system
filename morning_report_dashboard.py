@@ -1274,8 +1274,6 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     complete_morning = st.session_state.get("complete_morning", 0)
     extra_work = st.session_state.get("extra_work", 0)
     complete_all = complete_night + complete_morning + extra_work
-    received_all = night_received + morning_received
-
     pct_night_received = (complete_night / inv_all * 100) if inv_all > 0 else 0
     recv_start = st.session_state.get("recv_start", 473)
     in_transit = st.session_state.get("in_transit", 268)
@@ -1336,35 +1334,22 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     )
 
     st.markdown('<div class="section-title">กราฟสรุปภาพรวม</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3, gap="small")
+    c1, c2 = st.columns([1.35, 1], gap="small")
     with c1:
         with st.container(key="card_radial_1"):
-            chart_card_title("สัดส่วนงานรับเทียบประมาณการ", "ยอดรับรวมเทียบ Inventory · แสดง % ของประมาณการ")
+            chart_card_title("ประมาณการรับเทียบยอดงาน Complete", "เปรียบเทียบยอดรวม ไม่แยกกะ · Complete รวมงานนอกรอบ")
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["ประมาณการรับ", "งานรับรวม"],
-                    [inv_all, received_all],
+                    ["ประมาณการรับทั้งหมด", "งาน Complete รวม"],
+                    [inv_all, complete_all],
                     palette=["#8b9399", "#45d894"],
                     reference=inv_all,
-                    height=220,
+                    height=250,
                 ),
                 use_container_width=True,
             )
     with c2:
         with st.container(key="card_radial_2"):
-            chart_card_title("ยอดงาน Complete", "ยอดรับรวมเทียบ Complete รวมทุกกะและงานนอกรอบ")
-            st.plotly_chart(
-                metric_bar_3d_chart(
-                    ["งานรับรวม", "Complete รวม"],
-                    [received_all, complete_all],
-                    palette=["#8b9399", "#45d894"],
-                    reference=received_all,
-                    height=220,
-                ),
-                use_container_width=True,
-            )
-    with c3:
-        with st.container(key="card_radial_3"):
             chart_card_title("สรุปงานรับคงเหลือทั้งหมด", "หน่วย Pallets แยกตามสถานะ")
             st.plotly_chart(
                 metric_bar_3d_chart(
