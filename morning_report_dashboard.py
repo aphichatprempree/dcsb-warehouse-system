@@ -2,22 +2,12 @@ import json
 import hashlib
 import math
 import re
-import base64
-from io import BytesIO
 from pathlib import Path
 from datetime import date, datetime, time
-from xml.sax.saxutils import escape
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 def _norm_key(value):
     if pd.isna(value):
@@ -437,199 +427,6 @@ def _autosave_morning_report():
         st.session_state["_morning_autosaved_at"] = pd.Timestamp.now().strftime("%H:%M:%S")
     except OSError as exc:
         st.session_state["_morning_autosave_error"] = str(exc)
-
-
-def _pdf_thai_font():
-    font_name = "DCSBThai"
-    if font_name not in pdfmetrics.getRegisteredFontNames():
-        candidates = [
-            Path(__file__).with_name("NotoSansThai-Regular.ttf"),
-            Path(__file__).with_name("fonts") / "NotoSansThai-Regular.ttf",
-            Path("C:/Windows/Fonts/tahoma.ttf"),
-            Path("C:/Windows/Fonts/LeelawUI.ttf"),
-            Path("/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"),
-            Path("/usr/share/fonts/truetype/tlwg/Garuda.ttf"),
-            Path("/usr/share/fonts/opentype/tlwg/Garuda.ttf"),
-        ]
-        font_path = next((path for path in candidates if path.is_file()), None)
-        if font_path is None:
-            raise FileNotFoundError(
-                "ไม่พบฟอนต์ภาษาไทยสำหรับสร้าง PDF (เพิ่ม NotoSansThai-Regular.ttf ไว้ข้าง app.py ได้)"
-            )
-        pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
-    return font_name
-
-
-def _pdf_number(value):
-    number = float(value or 0)
-    return f"{int(number):,}" if number.is_integer() else f"{number:,.2f}".rstrip("0").rstrip(".")
-
-
-def _pdf_summary_table(rows, font_name):
-    label_style = ParagraphStyle(
-        "PdfLabel", fontName=font_name, fontSize=10, leading=15, textColor=colors.HexColor("#203653"), wordWrap="CJK"
-    )
-    value_style = ParagraphStyle(
-        "PdfValue", parent=label_style, alignment=TA_RIGHT, fontSize=10, textColor=colors.HexColor("#142a49")
-    )
-    group_style = ParagraphStyle(
-        "PdfGroup", fontName=font_name, fontSize=10, leading=14, textColor=colors.white, wordWrap="CJK"
-    )
-    data = [[Paragraph("รายการ", group_style), Paragraph("ยอด", group_style)]]
-    group_rows = []
-    for label, value, is_group in rows:
-        if is_group:
-            group_rows.append(len(data))
-            data.append([Paragraph(escape(str(label)), group_style), ""])
-        else:
-            data.append([
-                Paragraph(escape(str(label)), label_style),
-                Paragraph(escape(str(value)), value_style),
-            ])
-    table = Table(data, colWidths=[365, 130], repeatRows=1, hAlign="LEFT")
-    style = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#18385f")),
-        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f3f7fc")),
-        ("GRID", (0, 0), (-1, -1), .5, colors.HexColor("#c8d7e9")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 9),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-    ]
-    for row_index in group_rows:
-        style.extend([
-            ("SPAN", (0, row_index), (1, row_index)),
-            ("BACKGROUND", (0, row_index), (-1, row_index), colors.HexColor("#537eae")),
-        ])
-    table.setStyle(TableStyle(style))
-    return table
-
-
-def _combined_reports_pdf(history_date, history_data, morning_date, morning_data):
-    font_name = _pdf_thai_font()
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "PdfTitle", parent=styles["Title"], fontName=font_name, fontSize=19, leading=26,
-        alignment=TA_CENTER, textColor=colors.HexColor("#172c4b"), spaceAfter=4, wordWrap="CJK"
-    )
-    subtitle_style = ParagraphStyle(
-        "PdfSubtitle", fontName=font_name, fontSize=10, leading=15,
-        alignment=TA_CENTER, textColor=colors.HexColor("#60748e"), spaceAfter=18, wordWrap="CJK"
-    )
-    note_style = ParagraphStyle(
-        "PdfNote", fontName=font_name, fontSize=8.5, leading=13,
-        textColor=colors.HexColor("#51647c"), spaceBefore=12, wordWrap="CJK"
-    )
-    story = []
-
-    def append_report(title, report_date, values, page_type):
-        display_date = report_date.strftime("%d/%m/%Y") if hasattr(report_date, "strftime") else (report_date or "ไม่พบวันที่")
-        story.append(Paragraph(escape(title), title_style))
-        story.append(Paragraph(f"วันที่รายงาน {escape(str(display_date))} · DCSB Distribution Center", subtitle_style))
-        if values is None:
-            story.append(Paragraph("ยังไม่มีข้อมูลที่บันทึกไว้สำหรับหน้านี้ กรุณาเปิดหน้านั้นและบันทึกข้อมูลก่อนดาวน์โหลดอีกครั้ง", note_style))
-            return
-
-        if page_type == "history":
-            total_recv = float(values.get("hist_total_recv", 0) or 0)
-            rp03_total = float(values.get("hist_complete", 0) or 0)
-            extra_raw = values.get("hist_extra")
-            extra = max(0, float(extra_raw or 0))
-            regular = max(0, rp03_total - extra)
-            not_billed = float(values.get("hist_not_billed", 0) or 0)
-            reject = float(values.get("hist_not_po", 0) or 0)
-            not_received = reject + not_billed
-            percent = not_received / total_recv * 100 if total_recv else 0
-            summary_rows = [
-                ("ภาพรวมยอดรับ", "", True),
-                ("ประมาณการรับ (Inventory)", _pdf_number(values.get("hist_inv", 0)), False),
-                ("งานรับทั้งหมดจาก RP01 16.10", _pdf_number(total_recv), False),
-                ("งาน Complete", "", True),
-                ("งาน Complete จาก RP03 หลังหักงานนอกรอบ", "ตรวจสอบคีย์" if extra_raw is None else _pdf_number(regular), False),
-                ("งานนอกรอบ Complete (PO ใน RP03 ไม่พบใน RP01 16.10)", "ตรวจสอบคีย์" if extra_raw is None else _pdf_number(extra), False),
-                ("งาน Complete รวมจาก RP03 (Total Case Qty)", _pdf_number(regular + extra), False),
-                ("งานค้างส่ง", "", True),
-                ("เลื่อนส่ง", _pdf_number(values.get("hist_delayed", 0)), False),
-                ("Reject / ส่งไม่ครบตาม PO", _pdf_number(reject), False),
-                ("ยังไม่ยื่นบิล (RP01 หลัง 22.00)", _pdf_number(not_billed), False),
-                ("งานไม่ได้รับทั้งหมด (Reject + ยังไม่ยื่นบิล)", _pdf_number(not_received), False),
-                ("งานไม่ได้รับ (%)", f"{percent:.2f}%", False),
-            ]
-            note = "งานนอกรอบคำนวณจาก PO ของ RP03 ที่ไม่พบใน P/O ของ RP01 16.10 โดยรวม Total Case Qty (iLPNs) เฉพาะแถวที่ไม่พบ ส่วนงาน Complete ปกติ = RP03 Total Case Qty ทั้งหมด − งานนอกรอบ"
-        else:
-            inventory = float(values.get("inv_all", 0) or 0)
-            night_complete = float(values.get("complete_night", 0) or 0)
-            morning_complete = float(values.get("complete_morning", 0) or 0)
-            extra = float(values.get("extra_work", 0) or 0)
-            pending_night = float(values.get("sup_night_missing", 0) or 0)
-            pending_morning = float(values.get("sup_morning_missing", 0) or 0)
-            total_remaining = sum(float(values.get(key, 0) or 0) for key in ("recv_start", "in_transit", "sup_night_missing", "sup_morning_missing"))
-            summary_rows = [
-                ("ภาพรวมยอดประมาณการและงานรับ", "", True),
-                ("ยอดงานประมาณการรับทั้งหมด (RP01)", _pdf_number(inventory), False),
-                ("ยอดงานรับกะดึก (18.00-06.00)", _pdf_number(values.get("night_received", 0)), False),
-                ("ยอดงานรับกะเช้า (07.00-18.00)", _pdf_number(values.get("morning_received", 0)), False),
-                ("งาน Complete", "", True),
-                ("ยอดงาน Complete รับกะดึก", _pdf_number(night_complete), False),
-                ("ยอดงาน Complete รับกะเช้า", _pdf_number(morning_complete), False),
-                ("งาน Complete นอกรอบ (RP03)", _pdf_number(extra), False),
-                ("ยอดงาน Complete รวม", _pdf_number(night_complete + morning_complete + extra), False),
-                ("งานรับคงเหลือ", "", True),
-                ("กำลังลงสินค้า (Receiving Start)", _pdf_number(values.get("recv_start", 0)), False),
-                ("InTransit ที่ Check-in แล้ว", _pdf_number(values.get("in_transit", 0)), False),
-                ("Supplier ยังไม่มาส่งกะดึก", _pdf_number(pending_night), False),
-                ("Supplier ยังไม่มาส่งกะเช้า", _pdf_number(pending_morning), False),
-                ("สรุปงานรับคงเหลือทั้งหมด", _pdf_number(total_remaining), False),
-            ]
-            note = "Window Time อ้างอิง RP01: กะดึก 18.00 ถึงก่อน 07.00 และกะเช้า 07.00 ถึงก่อน 18.00 น. งานคงเหลือรวม Receiving Start + InTransit ที่ Check-in แล้ว + Supplier ที่ยังไม่ Check-in ทั้งสองกะ"
-
-        story.append(_pdf_summary_table(summary_rows, font_name))
-        story.append(Paragraph(escape(note), note_style))
-
-    append_report("สรุปงานรับและงานค้างส่ง (ย้อนหลัง)", history_date, history_data, "history")
-    story.append(PageBreak())
-    append_report("สถานการณ์การรับ (กะเช้าปัจจุบัน)", morning_date, morning_data, "morning")
-    buffer = BytesIO()
-    document = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=42, bottomMargin=38,
-        title="DCSB Distribution Center - Combined Daily Reports", author="DCSB Distribution Center",
-    )
-
-    def draw_page_number(canvas, doc):
-        canvas.saveState()
-        canvas.setFont(font_name, 8)
-        canvas.setFillColor(colors.HexColor("#687b92"))
-        canvas.drawRightString(A4[0] - 40, 20, f"หน้า {doc.page} / 2")
-        canvas.restoreState()
-
-    document.build(story, onFirstPage=draw_page_number, onLaterPages=draw_page_number)
-    return buffer.getvalue()
-
-
-def _report_record_from_store(store, page, report_date):
-    if not report_date:
-        return None
-    records = store.get("records", {})
-    record = records.get(f"{page}:{report_date}")
-    if record is None and page == "history":
-        record = records.get(report_date)
-    return record
-
-
-def _combined_pdf_for_active_page(page, report_date):
-    store = _load_report_store()
-    if page == "history":
-        history_date = report_date
-        history_data = {field: st.session_state.get(field, default) for field, default in REPORT_DEFAULTS.items()}
-        morning_date = report_date if _report_record_from_store(store, "morning", report_date) else store.get("morning_latest_date")
-        morning_data = _report_record_from_store(store, "morning", morning_date)
-    else:
-        morning_date = report_date
-        morning_data = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
-        history_date = report_date if _report_record_from_store(store, "history", report_date) else store.get("latest_date")
-        history_data = _report_record_from_store(store, "history", history_date)
-    return _combined_reports_pdf(history_date, history_data, morning_date, morning_data)
 
 
 # ตั้งค่าหน้าเว็บแดชบอร์ดหลัก
@@ -1552,30 +1349,6 @@ st.markdown(
     '<div class="hero-bar"></div></div>',
     unsafe_allow_html=True,
 )
-_active_page = "morning" if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)" else "history"
-_active_report_date = selected_morning_date if _active_page == "morning" else selected_report_date
-try:
-    _combined_pdf = _combined_pdf_for_active_page(_active_page, _active_report_date)
-    st.download_button(
-        "📄 ดาวน์โหลด PDF รวม 2 หน้า",
-        data=_combined_pdf,
-        file_name=f"DCSB_รายงานรวม_{_active_report_date}.pdf",
-        mime="application/pdf",
-        key=f"combined_pdf_{_active_page}_{_active_report_date}",
-        help="รวมหน้าสรุปงานรับและงานค้างส่ง กับหน้าสถานการณ์การรับกะเช้าปัจจุบันไว้ใน PDF เดียว",
-    )
-    with st.expander("👁️ ดูตัวอย่างรายงานทั้ง 2 หน้า", expanded=False):
-        _pdf_preview_base64 = base64.b64encode(_combined_pdf).decode("ascii")
-        st.components.v1.html(
-            f'''<iframe title="ตัวอย่าง PDF รายงาน 2 หน้า"
-                src="data:application/pdf;base64,{_pdf_preview_base64}"
-                style="width:100%;height:900px;border:1px solid #c9d8eb;border-radius:10px;background:#fff"
-                type="application/pdf"></iframe>''',
-            height=920,
-            scrolling=False,
-        )
-except (OSError, ValueError) as exc:
-    st.error(f"สร้าง PDF ไม่สำเร็จ: {exc}")
 for warning in report_date_warnings:
     st.warning(warning)
 
