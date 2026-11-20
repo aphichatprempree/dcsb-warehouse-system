@@ -77,10 +77,11 @@ def _minutes_since_midnight(value):
 def _window_mask(frame, shift):
     col = _column(frame, "Window Time")
     minutes = frame[col].map(_minutes_since_midnight)
-    # Window Time shifts: night 00:00-05:00; morning = everything else
-    # (05:00 onward and any unreadable time), so night + morning always equals the total.
-    night = minutes.notna() & (minutes < 5 * 60)
-    return night if shift == "night" else ~night
+    # Shift windows are half-open intervals: night 18:00–07:00,
+    # morning 07:00–18:00. This keeps boundary rows in exactly one shift.
+    if shift == "night":
+        return minutes.notna() & ((minutes >= 18 * 60) | (minutes < 7 * 60))
+    return minutes.notna() & (minutes >= 7 * 60) & (minutes < 18 * 60)
 
 
 def _load_morning_metrics(files):
@@ -91,12 +92,15 @@ def _load_morning_metrics(files):
             rp01 = _read_report(rp01_file, ["Pallets Qty", "P/O", "Window Time"])
             result["report_date"] = _report_date_from_frame(rp01)
             result["inv_all"] = _sum_numeric(rp01, "Pallets Qty")
-            # Divide RP01 Pallets Qty by its Window Time: night 00:00-05:00,
-            # morning = everything else, so the two always sum to the RP01 total.
+            # Divide RP01 Pallets Qty by its Window Time: night 18:00–06:59,
+            # morning 07:00–17:59. Unreadable times go to morning so totals
+            # still reconcile to the full RP01 Pallets Qty.
             night_mask = _window_mask(rp01, "night")
             morning_mask = _window_mask(rp01, "morning")
             result["night_received"] = _sum_numeric(rp01, "Pallets Qty", night_mask)
-            result["morning_received"] = _sum_numeric(rp01, "Pallets Qty", morning_mask)
+            morning_window_total = _sum_numeric(rp01, "Pallets Qty", morning_mask)
+            unclassified = max(0, result["inv_all"] - result["night_received"] - morning_window_total)
+            result["morning_received"] = morning_window_total + unclassified
         if files["rp42"] is not None:
             rp42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC", "Window Time", "CHECK_IN_USER"])
             status = rp42[_column(rp42, "ASN_STATUS_DESC")].astype(str).str.strip().str.casefold()
@@ -321,20 +325,16 @@ def _load_imported_metrics(files):
                 result["report_date"] = _report_date_from_frame(d22)
         else:
             d22 = None
-        if files["rp42"] is not None:
-            d42 = _read_report(files["rp42"], ["Pallets Qty", "ASN_STATUS_DESC"])
-            status = _column(d42, "ASN_STATUS_DESC")
-            result["hist_complete"] = _sum_numeric(
-                d42, "Pallets Qty", d42[status].astype(str).str.strip().str.casefold().eq("receiving verified")
-            )
-        if files["rp03"] is not None and d22 is not None:
-            d03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)", "Purchase Order"])
-            extra, left, right, overlap = _extra_complete(d22, d03)
-            result["hist_extra"] = extra
-            result["extra_join"] = (
-                f"VLOOKUP {left} (RP01 22.00) ↔ {right} (RP03): "
-                f"พบค่า #N/A {overlap:,} แถว นับเฉพาะแถวที่ไม่ตรงกัน"
-            )
+        if files["rp03"] is not None:
+            d03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)"])
+            result["hist_complete"] = _sum_numeric(d03, "Total Case Qty (iLPNs)")
+            if d22 is not None:
+                extra, left, right, overlap = _extra_complete(d22, d03)
+                result["hist_extra"] = extra
+                result["extra_join"] = (
+                    f"ตรวจงานนอกรอบ: VLOOKUP {right} (RP03) ↔ {left} (RP01 22.00) "
+                    f"พบค่า #N/A {overlap:,} แถว · แสดงเป็นรายละเอียดในยอด RP03 ไม่บวกซ้ำ"
+                )
         return result, None
     except Exception as exc:
         return result, str(exc)
@@ -1381,19 +1381,19 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
     report_values = [
         ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ยอดงานประมาณการรับทั้งหมด", f"{inv_all:,}", False),
-        ("ยอดงานรับกะดึก (17.00-05.00)", f"{night_received:,}", False),
-        ("ยอดงานรับกะเช้า (05.00-17.00)", f"{morning_received:,}", False),
+        ("ยอดงานรับกะดึก (18.00-06.00)", f"{night_received:,}", False),
+        ("ยอดงานรับกะเช้า (07.00-18.00)", f"{morning_received:,}", False),
         ("group", "งาน Complete"),
-        ("ยอดงาน Complete รับกะดึก (17.00-05.00)", f"{complete_night:,}", False),
-        ("ยอดงาน Complete รับกะเช้า (05.00-17.00)", f"{complete_morning:,}", False),
+        ("ยอดงาน Complete รับกะดึก (18.00-06.00)", f"{complete_night:,}", False),
+        ("ยอดงาน Complete รับกะเช้า (07.00-18.00)", f"{complete_morning:,}", False),
         ("งาน Complete นอกรอบ (RP03)", f"{extra_work:,}", False),
         ("(%) สรุปยอดงานรับกะดึก", f"{pct_night_received:.2f}%", False),
         ("group", "งานรับคงเหลือ"),
         ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f"{total_remaining:,}", False),
         ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f"{recv_start:,}", False),
         ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f"{in_transit:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (17.00-05.00)", f"{sup_night_missing:,}", False),
-        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (05.00-17.00)", f"{sup_morning_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (18.00-06.00)", f"{sup_night_missing:,}", False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (07.00-18.00)", f"{sup_morning_missing:,}", False),
         ("(%) Supplier ค้างรับรวม", f"{pct_remaining:.2f}%", True),
     ]
     st.markdown(
@@ -1565,8 +1565,10 @@ else:
     hist_pct_not_recv = (
         (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
     )
-    hist_complete_all = hist_complete + hist_extra_chart
-    hist_complete_all_label = "ตรวจสอบคีย์" if hist_extra is None else f"{hist_complete_all:,}"
+    # RP03 Total Case Qty already includes the off-cycle rows. Keep the
+    # unmatched RP03 amount as a breakdown, not an additional amount.
+    hist_complete_all = hist_complete
+    hist_complete_all_label = f"{hist_complete_all:,}"
 
     st.markdown(
         """
@@ -1632,7 +1634,7 @@ else:
             <div class="focus-card status-complete">
                 <div class="focus-label">📦 งาน Complete รวมทั้งหมด</div>
                 <div class="focus-value">{hist_complete_all_label} <span>Pallets</span></div>
-                <div class="focus-unit">รวมงาน Complete (22.00 น.) และงานนอกรอบ</div>
+                <div class="focus-unit">ยอดจาก RP03 · งานนอกรอบแสดงเป็นรายละเอียดแยก</div>
             </div>
             <div class="focus-card alert">
                 <div class="focus-label">🌙 งานไม่ได้รับทั้งหมด</div>
@@ -1652,8 +1654,8 @@ else:
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
         ("group", "งาน Complete"),
-        ("งาน Complete (22.00 น.)", f"{hist_complete:,}", False),
-        ("งานนอกรอบ Complete", hist_extra_label, False),
+        ("งาน Complete รวมจาก RP03 (Total Case Qty)", f"{hist_complete:,}", False),
+        ("งานนอกรอบ Complete (ส่วนย่อย RP03)", hist_extra_label, False),
         ("งาน Complete รวม", hist_complete_all_label, False),
         ("group", "งานค้างส่ง"),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
@@ -1680,11 +1682,11 @@ else:
         with st.container(key="card_hist_tube"):
             chart_card_title(
                 "📊 เปรียบเทียบยอดรับและงาน Complete",
-                "แท่งแสดงจำนวน Pallets · % เทียบกับงานรับทั้งหมด (16.10 น.)",
+                "ยอด Complete ใช้ RP03 Total Case Qty · งานนอกรอบเป็นรายละเอียดส่วนย่อย · เทียบกับ RP01 16.10",
             )
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["งานรับทั้งหมด", "งาน Complete", "งานนอกรอบ"],
+                    ["งานรับทั้งหมด RP01", "Complete รวม RP03", "นอกรอบ (ส่วนย่อย RP03)"],
                     [hist_total_recv, hist_complete, hist_extra_chart],
                     reference=hist_total_recv,
                     height=250,
@@ -1719,7 +1721,7 @@ else:
             )
         with hc2:
             hist_complete = st.number_input(
-                    "งาน Complete (22.00 น.)", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
+                "งาน Complete รวมจาก RP03 (Total Case Qty)", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
             )
             if hist_extra is not None:
                 hist_extra = st.number_input(
