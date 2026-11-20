@@ -578,6 +578,15 @@ button[aria-label="Open sidebar"]:hover { background:linear-gradient(145deg,#161
 [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { font-size:.76rem; background:var(--grad); border:0; border-radius:10px; color:#fff; padding:.22rem .7rem; box-shadow:0 5px 10px rgba(58,61,255,.25); }
 [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button * { color:#fff; }
 [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * { color:var(--ink); }
+/* Compact report import controls so every uploader uses less vertical space. */
+[data-testid="stSidebar"] [data-testid="stExpander"] { margin:0 0 .25rem !important; }
+[data-testid="stSidebar"] [data-testid="stExpander"] details summary { padding:.4rem .65rem !important; }
+[data-testid="stSidebar"] [data-testid="stExpander"] details > div { padding:.3rem .5rem .4rem !important; }
+[data-testid="stSidebar"] [data-testid="stFileUploader"] { margin:0 !important; padding:0 !important; }
+[data-testid="stSidebar"] [data-testid="stFileUploader"] label { margin-bottom:.12rem !important; font-size:.72rem !important; line-height:1.15 !important; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { min-height:3.2rem; padding:.22rem .4rem; flex-direction:row; align-items:center; gap:.4rem; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] { margin:0 !important; line-height:1.15 !important; }
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { padding:.16rem .5rem; white-space:nowrap; }
 .sb-foot { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:14px; padding-top:12px; border-top:2px solid var(--line); }
 .sb-chip { font-size:.7rem; font-weight:600; padding:5px 13px; border-radius:999px; background:#f1f4f9; border:1.5px solid var(--line); box-shadow:var(--sh-sm); color:var(--muted); }
 .sb-chip.on { background:var(--grad); color:#fff; box-shadow:0 5px 12px rgba(58,61,255,.3); }
