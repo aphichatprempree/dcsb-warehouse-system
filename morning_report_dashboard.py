@@ -344,29 +344,21 @@ def _load_imported_metrics(files):
     except Exception as exc:
         return result, str(exc)
 
+# วันที่ที่ยังไม่เคย import/บันทึกข้อมูล ให้เริ่มจาก 0 ทุกค่า
 REPORT_DEFAULTS = {
-    "hist_inv": 6126,
-    "hist_total_recv": 5904,
-    "hist_complete": 5722,
-    "hist_extra": 138,
+    "hist_inv": 0,
+    "hist_total_recv": 0,
+    "hist_complete": 0,
+    "hist_extra": 0,
     "hist_delayed": 0,
-    "hist_not_po": 73,
-    "hist_not_billed": 250,
+    "hist_not_po": 0,
+    "hist_not_billed": 0,
 }
 HISTORY_PO_FIELDS = ("hist_delayed_po_input", "hist_reject_item_input", "hist_po_rp01_source")
-MORNING_DEFAULTS = {
-    "inv_all": 6058,
-    "night_received": 4240,
-    "morning_received": 1818,
-    "complete_night": 4475,
-    "complete_morning": 0,
-    "extra_work": 0,
-    "total_remaining": 2425,
-    "recv_start": 473,
-    "in_transit": 268,
-    "sup_night_missing": 239,
-    "sup_morning_missing": 0,
-}
+MORNING_DEFAULTS = {k: 0 for k in (
+    "inv_all", "night_received", "morning_received", "complete_night", "complete_morning",
+    "extra_work", "total_remaining", "recv_start", "in_transit", "sup_night_missing", "sup_morning_missing",
+)}
 
 
 REPORT_STORE_PATH = Path(__file__).with_name("daily_reports.json")
