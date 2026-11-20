@@ -216,12 +216,12 @@ def _report_date_warnings(files, rp01_date):
     return warnings
 
 
-def _extra_complete(rp01_22, rp03):
-    """Sum RP03 case quantities for POs absent from RP01 22.00 (VLOOKUP #N/A)."""
-    rp01_col = _column(rp01_22, "P/O")
+def _extra_complete(rp01_1610, rp03):
+    """Sum RP03 case quantities for POs absent from RP01 16.10 (VLOOKUP #N/A)."""
+    rp01_col = _column(rp01_1610, "P/O")
     rp03_po_col = _column(rp03, "Purchase Order")
     rp03_col = _column(rp03, "Total Case Qty (iLPNs)")
-    rp01_po = rp01_22[rp01_col].map(lambda value: _norm_key(value).casefold())
+    rp01_po = rp01_1610[rp01_col].map(lambda value: _norm_key(value).casefold())
     rp03_po = rp03[rp03_po_col].map(lambda value: _norm_key(value).casefold())
     rp03_qty = pd.to_numeric(rp03[rp03_col], errors="coerce")
     rp01_po_keys = set(value for value in rp01_po if value)
@@ -317,10 +317,11 @@ def _lookup_reject_pallets(rp01_file, rp03_file, item_text):
 def _load_imported_metrics(files):
     result = {}
     try:
+        d16 = None
         if files["rp01_1610"] is not None:
-            d = _read_report(files["rp01_1610"], ["Pallets Qty", "P/O"])
-            result["hist_total_recv"] = _sum_numeric(d, "Pallets Qty")
-            result["report_date"] = _report_date_from_frame(d)
+            d16 = _read_report(files["rp01_1610"], ["Pallets Qty", "P/O"])
+            result["hist_total_recv"] = _sum_numeric(d16, "Pallets Qty")
+            result["report_date"] = _report_date_from_frame(d16)
         if files["rp01_2200"] is not None:
             d22 = _read_report(files["rp01_2200"], ["Pallets Qty", "P/O"])
             result["hist_not_billed"] = _sum_numeric(d22, "Pallets Qty")
@@ -331,11 +332,11 @@ def _load_imported_metrics(files):
         if files["rp03"] is not None:
             d03 = _read_report(files["rp03"], ["Total Case Qty (iLPNs)"])
             result["hist_complete"] = _sum_numeric(d03, "Total Case Qty (iLPNs)")
-            if d22 is not None:
-                extra, left, right, overlap = _extra_complete(d22, d03)
+            if d16 is not None:
+                extra, left, right, overlap = _extra_complete(d16, d03)
                 result["hist_extra"] = extra
                 result["extra_join"] = (
-                    f"ตรวจงานนอกรอบ: VLOOKUP PO {right} (RP03) ↔ {left} (RP01 22.00) "
+                    f"ตรวจงานนอกรอบ: VLOOKUP PO {right} (RP03) ↔ {left} (RP01 16.10) "
                     f"พบ PO ที่เป็น #N/A {overlap:,} แถว · รวมเฉพาะ Total Case Qty จากแถวนั้น"
                 )
         return result, None
