@@ -1217,14 +1217,19 @@ def chart_card_title(title, sub=""):
 MORNING_ACCENTS = ["#83c89d", "#8eb7df", "#aa94d0", "#f1bd69", "#e789a9", "#efd479", "#e99c82"]
 
 DECK_CSS = """
-html, body { margin:0; background:#e9eef5; }
+html, body { margin:0; background:#e9eef5; overflow-x:hidden; }
+*, *::before, *::after { box-sizing:border-box; }
+.deck, .slide, .chart-grid { width:100%; }
 body { padding:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .deck { max-width:1600px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
 .slide { border-radius:28px; padding:14px 20px 18px; box-shadow:0 2px 6px rgba(43,57,78,.08),0 14px 30px rgba(43,57,78,.10); }
 .slide.theme-hist { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); border:1px solid #c6d7ec; }
 .slide.theme-morn { background:linear-gradient(145deg,#fffdf9,#fff6ed 58%,#fffaf2); border:1px solid #efd6c0; }
+.hero { position:relative; }
+.hero-date { position:absolute; top:8px; right:4px; font-size:1.05rem; font-weight:700; color:var(--ink); background:rgba(255,255,255,.75); border:1.5px solid var(--line-strong); border-radius:999px; padding:5px 16px; box-shadow:0 2px 6px rgba(43,57,78,.10); }
 .chart-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:10px; }
-.chart-grid > * { min-width:0; }
+.chart-grid > * { min-width:0; overflow:hidden; }
+.report-wrap, .report-grid { max-width:100%; }
 .toolbar { max-width:1600px; margin:0 auto 10px; display:flex; justify-content:flex-end; }
 .toolbar button { font-family:inherit; font-size:.8rem; font-weight:600; color:#2d3650; background:#fff; border:1px solid #9aaccb; border-radius:10px; padding:6px 14px; cursor:pointer; }
 .toolbar button:hover { background:#eef2f8; }
@@ -1289,9 +1294,10 @@ def _focus_card_html(css_class, label, value_html, unit):
     )
 
 
-def _hero_html(sheet_name):
+def _hero_html(sheet_name, date_text=""):
+    badge = f'<div class="hero-date">📅 ประจำวันที่ {date_text}</div>' if date_text else ""
     return (
-        '<div class="hero"><div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
+        f'<div class="hero">{badge}<div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
         f'<div class="hero-title">{NAV_ICON[sheet_name]} {sheet_name}</div>'
         '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
         '<div class="hero-bar"></div></div>'
@@ -1373,10 +1379,10 @@ def _history_slide_html(h, date_text):
     bars = metric_bar_3d_chart(
         ["งานรับทั้งหมด RP01", "Complete หลังหักนอกรอบ", "งานนอกรอบ"],
         [h["hist_total_recv"], h["complete_base"], h["extra_chart"]],
-        reference=h["hist_total_recv"], height=250,
+        reference=h["hist_total_recv"], height=175,
         palette=["#29476d", "#3d78bd", "#83a9d4"],
     )
-    donut = pending_donut_chart(h["hist_not_billed"], h["hist_not_po"], h["not_recv"], height=250)
+    donut = pending_donut_chart(h["hist_not_billed"], h["hist_not_po"], h["not_recv"], height=235)
     charts = (
         '<div class="chart-grid">'
         + _chart_card_html(
@@ -1391,7 +1397,7 @@ def _history_slide_html(h, date_text):
     )
     return (
         '<section class="slide theme-hist">'
-        + _hero_html(NAV[0]) + focus
+        + _hero_html(NAV[0], date_text) + focus
         + '<div class="section-title">ตารางสรุปรายงาน</div>' + table
         + '<div class="section-title">กราฟสรุปภาพรวม</div>' + charts
         + "</section>"
@@ -1436,12 +1442,12 @@ def _morning_slide_html(m, date_text):
     bars_total = metric_bar_3d_chart(
         ["ประมาณการรับทั้งหมด", "งาน Complete รวม"],
         [m["inv_all"], m["complete_all"]],
-        palette=["#8b9399", "#45d894"], reference=m["inv_all"], height=250,
+        palette=["#8b9399", "#45d894"], reference=m["inv_all"], height=150,
     )
     bars_remaining = metric_bar_3d_chart(
         ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
         [m["recv_start"], m["in_transit"], m["sup_night_missing"], m["sup_morning_missing"]],
-        palette=["#e4a62e", "#5d9bcb", "#e63e2d", "#fa7a27"], height=240,
+        palette=["#e4a62e", "#5d9bcb", "#e63e2d", "#fa7a27"], height=190,
     )
     charts = (
         '<div class="chart-grid">'
@@ -1456,7 +1462,7 @@ def _morning_slide_html(m, date_text):
     )
     return (
         '<section class="slide theme-morn">'
-        + _hero_html(NAV[1]) + focus
+        + _hero_html(NAV[1], date_text) + focus
         + '<div class="section-title">ตารางสรุปรายงาน</div>' + table
         + '<div class="section-title">กราฟสรุปภาพรวม</div>' + charts
         + "</section>"
@@ -1475,7 +1481,7 @@ def build_deck_html(history, morning, hist_date, morning_date):
         '<div class="deck">'
         + _history_slide_html(history, hist_date.strftime("%d/%m/%Y"))
         + _morning_slide_html(morning, morning_date.strftime("%d/%m/%Y"))
-        + "</div></body></html>"
+        + '</div><script>(function(){function fit(){try{var h=document.documentElement.scrollHeight;var f=window.frameElement;if(f){f.style.height=h+"px";f.setAttribute("height",h);}}catch(e){}}window.addEventListener("load",fit);window.addEventListener("resize",fit);setTimeout(fit,300);setTimeout(fit,1500);if(window.ResizeObserver){new ResizeObserver(fit).observe(document.body);}})();</script></body></html>'
     )
 
 
