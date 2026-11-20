@@ -1569,9 +1569,11 @@ else:
     hist_pct_not_recv = (
         (hist_not_recv / hist_total_recv * 100) if hist_total_recv > 0 else 0
     )
-    # RP03 Total Case Qty already includes the off-cycle rows. Keep the
-    # unmatched RP03 amount as a breakdown, not an additional amount.
-    hist_complete_all = hist_complete
+    # RP03 Total Case Qty includes off-cycle rows. Subtract that subset to get
+    # the regular Complete amount, then add the two parts for the overall total.
+    hist_complete_base = max(0, hist_complete - hist_extra_chart)
+    hist_complete_base_label = "ตรวจสอบคีย์" if hist_extra is None else f"{hist_complete_base:,}"
+    hist_complete_all = hist_complete_base + hist_extra_chart
     hist_complete_all_label = f"{hist_complete_all:,}"
 
     st.markdown(
@@ -1638,7 +1640,7 @@ else:
             <div class="focus-card status-complete">
                 <div class="focus-label">📦 งาน Complete รวมทั้งหมด</div>
                 <div class="focus-value">{hist_complete_all_label} <span>Pallets</span></div>
-                <div class="focus-unit">ยอดจาก RP03 · งานนอกรอบแสดงเป็นรายละเอียดแยก</div>
+                <div class="focus-unit">ยอด Complete ปกติ + งานนอกรอบ จาก RP03</div>
             </div>
             <div class="focus-card alert">
                 <div class="focus-label">🌙 งานไม่ได้รับทั้งหมด</div>
@@ -1658,9 +1660,9 @@ else:
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
         ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
         ("group", "งาน Complete"),
-        ("งาน Complete รวมจาก RP03 (Total Case Qty)", f"{hist_complete:,}", False),
+        ("งาน Complete จาก RP03 (หักงานนอกรอบแล้ว)", hist_complete_base_label, False),
         ("งานนอกรอบ Complete (ส่วนย่อย RP03)", hist_extra_label, False),
-        ("งาน Complete รวม", hist_complete_all_label, False),
+        ("งาน Complete รวมจาก RP03 (Total Case Qty)", hist_complete_all_label, False),
         ("group", "งานค้างส่ง"),
         ("งานไม่ได้รับ (%)", f"{hist_pct_not_recv:.2f}%", True),
         ("เลื่อนส่ง", _format_quantity(hist_delayed), False),
@@ -1686,12 +1688,12 @@ else:
         with st.container(key="card_hist_tube"):
             chart_card_title(
                 "📊 เปรียบเทียบยอดรับและงาน Complete",
-                "ยอด Complete ใช้ RP03 Total Case Qty · งานนอกรอบเป็นรายละเอียดส่วนย่อย · เทียบกับ RP01 16.10",
+                "Complete ปกติ = RP03 Total Case Qty − งานนอกรอบ · เทียบกับ RP01 16.10",
             )
             st.plotly_chart(
                 metric_bar_3d_chart(
-                    ["งานรับทั้งหมด RP01", "Complete รวม RP03", "นอกรอบ (ส่วนย่อย RP03)"],
-                    [hist_total_recv, hist_complete, hist_extra_chart],
+                    ["งานรับทั้งหมด RP01", "Complete หลังหักนอกรอบ", "งานนอกรอบ"],
+                    [hist_total_recv, hist_complete_base, hist_extra_chart],
                     reference=hist_total_recv,
                     height=250,
                     palette=["#29476d", "#3d78bd", "#83a9d4"],
@@ -1725,7 +1727,7 @@ else:
             )
         with hc2:
             hist_complete = st.number_input(
-                "งาน Complete รวมจาก RP03 (Total Case Qty)", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
+                "RP03 Total Case Qty ทั้งหมด", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
             )
             if hist_extra is not None:
                 hist_extra = st.number_input(
