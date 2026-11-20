@@ -8,6 +8,7 @@ from datetime import date, datetime, time
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 def _norm_key(value):
     if pd.isna(value):
@@ -444,6 +445,7 @@ RAINBOW = [
     "#3a3dff", "#2e8bff", "#7b6cff", "#8d9bb3",
     "#27b3d6", "#5b6b8c", "#9aa8ff", "#b4bfd0",
 ]
+DEFAULT_RAINBOW = list(RAINBOW)
 INK = "#2d3650"
 MUTED = "#8590a6"
 FONT = "IBM Plex Sans Thai, sans-serif"
@@ -454,9 +456,7 @@ CHART_LEGEND_BORDER = "#9aaccb"
 BAR_TEXT = "white"
 BUBBLE_TEXT = None
 
-st.markdown(
-    """
-<style>
+BASE_CSS = r"""
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
 :root {
     --ink:#2d3650; --muted:#8590a6; --bg:#e4e9f1; --bg2:#eef2f8;
@@ -626,11 +626,256 @@ button[aria-label="Open sidebar"]:hover { background:linear-gradient(145deg,#161
 .report-cell.status-neutral .report-value { color:#626a70; }
 .focus-card.status-complete { background:linear-gradient(145deg,#fff,#f4faf5) !important; border-color:#d8e5da !important; }
 .focus-card.status-complete .focus-value { color:#477d52 !important; }
-</style>
+"""
+MORNING_THEME_CSS = r"""
+body:has(.morning-theme) {
+    --ink:#1f2527; --muted:#8a9296; --blue:#5b8fc0; --blue2:#8ab4d8;
+    --rose:#e0707f; --grad:linear-gradient(120deg,#cdeed7,#f7e6bd);
+    --line:#eceff0; --line-strong:#e8ecee;
+    --sh:0 1px 2px rgba(31,37,39,.03), 0 10px 28px rgba(31,37,39,.05);
+    --sh-sm:0 1px 2px rgba(31,37,39,.03), 0 4px 14px rgba(31,37,39,.04);
+    --sh-in:none;
+}
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#fcfcfc; }
 
-""",
-    unsafe_allow_html=True,
-)
+/* hero: left-aligned greeting, no card */
+body:has(.morning-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:6px 4px 2px; margin:0 0 4px; border-radius:0; }
+body:has(.morning-theme) .hero-kicker { color:var(--muted); font-size:.62rem; font-weight:500; letter-spacing:.14em; }
+body:has(.morning-theme) .hero-title { color:var(--ink); font-size:1.85rem; font-weight:700; letter-spacing:-.025em; margin:2px 0 0; }
+body:has(.morning-theme) .hero-subtitle { color:var(--muted); font-size:.82rem; }
+body:has(.morning-theme) .hero-bar { display:none; }
+body:has(.morning-theme) .section-title { border-bottom:0; font-size:.95rem; margin:12px 0 4px; padding-bottom:0; }
+body:has(.morning-theme) .section-title::before { width:8px; height:8px; border-radius:50%; background:#83c89d; box-shadow:none; }
+
+/* focus cards: pastel gradient */
+body:has(.morning-theme) .focus-card { background:linear-gradient(145deg,#fff 0%,#e4f5e9 48%,#d2ebda 100%); border:1px solid #c1dfca; border-radius:22px; box-shadow:0 2px 3px rgba(36,65,45,.08),0 12px 24px rgba(73,120,88,.17),0 22px 38px rgba(73,120,88,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(83,136,98,.08); transition:transform .18s ease,box-shadow .18s ease; padding:12px 20px 11px 22px; }
+body:has(.morning-theme) .focus-card:hover { transform:translateY(-3px); box-shadow:0 3px 5px rgba(36,65,45,.1),0 16px 28px rgba(73,120,88,.21),0 28px 42px rgba(73,120,88,.1),inset 0 2px 0 rgba(255,255,255,.98); }
+body:has(.morning-theme) .focus-card::before { display:none; }
+body:has(.morning-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 70%); pointer-events:none; }
+body:has(.morning-theme) .focus-card .focus-value { color:var(--ink); }
+body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff 0%,#fde8e9 48%,#f8d9dc 100%); border-color:#edc3cb; box-shadow:0 2px 3px rgba(83,42,48,.08),0 12px 24px rgba(166,88,98,.17),0 22px 38px rgba(166,88,98,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(166,88,98,.07); }
+body:has(.morning-theme) .focus-card.alert .focus-value { color:var(--rose); }
+
+/* report table */
+body:has(.morning-theme) .report-wrap { background:linear-gradient(150deg,#fff,#f8fbf9); border:1px solid #d8e3dc; border-radius:24px; box-shadow:0 2px 4px rgba(37,57,43,.06),0 12px 28px rgba(50,70,58,.14),0 24px 44px rgba(50,70,58,.06),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(86,117,95,.04); }
+body:has(.morning-theme) .report-head { border-bottom:0; color:var(--ink); }
+body:has(.morning-theme) .report-group { border-bottom:1px solid #f0f2f3; color:var(--muted); font-size:.74rem; font-weight:600; letter-spacing:.04em; }
+body:has(.morning-theme) .report-cell { border:1px solid rgba(90,112,99,.18) !important; box-shadow:0 2px 3px rgba(43,60,49,.07),0 6px 12px rgba(43,60,49,.1),inset 0 2px 0 rgba(255,255,255,.94),inset 0 -2px 3px rgba(70,94,76,.04); border-radius:16px; background:#fff; }
+body:has(.morning-theme) .report-label { color:#6b7478; }
+body:has(.morning-theme) .report-value { color:var(--ink); }
+body:has(.morning-theme) .report-value.alert { color:var(--rose); }
+body:has(.morning-theme) .report-cell.tone0 { background:linear-gradient(160deg,#dcf2e3,#f6fbf8); }
+body:has(.morning-theme) .report-cell.tone1 { background:linear-gradient(160deg,#e1edf9,#f7fbff); }
+body:has(.morning-theme) .report-cell.tone2 { background:linear-gradient(160deg,#ebe5f7,#faf8fe); }
+body:has(.morning-theme) .report-cell.tone3 { background:linear-gradient(160deg,#fde8cd,#fff8ee); }
+body:has(.morning-theme) .report-cell.tone4 { background:linear-gradient(160deg,#fbe2e8,#fff7f9); }
+body:has(.morning-theme) .report-cell.tone5 { background:linear-gradient(160deg,#faf0c8,#fffcec); }
+body:has(.morning-theme) .report-cell.tone6 { background:linear-gradient(160deg,#fadfd5,#fff6f2); }
+body:has(.morning-theme) .report-cell.tone7 { background:linear-gradient(160deg,#d9efec,#f5fbfa); }
+
+/* chart cards, expander, inputs, buttons */
+body:has(.morning-theme) [class*="st-key-card"] { background:linear-gradient(150deg,#fff,#f7fafb); border:1px solid #d9e2e8; border-radius:22px; box-shadow:0 2px 4px rgba(38,56,68,.07),0 12px 26px rgba(45,63,78,.15),0 22px 38px rgba(45,63,78,.06),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(60,87,105,.04); transition:transform .18s ease,box-shadow .18s ease; }
+body:has(.morning-theme) [class*="st-key-card"]:hover { transform:translateY(-3px); box-shadow:0 4px 6px rgba(38,56,68,.08),0 16px 30px rgba(45,63,78,.2),0 28px 44px rgba(45,63,78,.09),inset 0 2px 0 #fff; }
+body:has(.morning-theme) .chart-sub { border-bottom:1px dashed #e6eaeb; }
+body:has(.morning-theme) [data-testid="stExpander"] { background:#fff; border:1px solid #eceff0 !important; border-radius:20px; box-shadow:var(--sh-sm); }
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stNumberInput"] button { color:var(--muted); }
+body:has(.morning-theme) .stButton > button { background:#1f2527; box-shadow:none; border-radius:12px; }
+
+/* sidebar: white, light-grey active pill */
+body:has(.morning-theme) [data-testid="stSidebar"] { background:#fff; border-right:1px solid #eef0f1; box-shadow:none; }
+body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #eef0f1; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
+body:has(.morning-theme) .sb-name { color:var(--ink); }
+body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:var(--muted); }
+body:has(.morning-theme) .sb-logo { background:linear-gradient(145deg,#21110d 0%,#791b12 26%,#e43a19 52%,#ff851f 76%,#ffd653 100%); border:1px solid #ffc15b; border-radius:14px; box-shadow:0 0 0 2px rgba(255,105,35,.18),0 0 12px rgba(239,65,25,.58),0 0 24px rgba(255,117,28,.38),0 0 32px rgba(255,193,66,.24),inset 0 2px 0 rgba(255,245,211,.6),inset 0 -3px 7px rgba(91,24,8,.38); }
+body:has(.morning-theme) .sb-logo svg { stroke:#fff9e7; filter:drop-shadow(0 0 3px rgba(255,255,237,.98)) drop-shadow(0 0 7px rgba(255,158,48,.9)) drop-shadow(0 0 10px rgba(255,71,25,.62)); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { background:transparent; border:1px solid transparent; box-shadow:none; border-radius:12px; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:hover { background:#f7f8f8; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label p { color:#62696d; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:#f1f3f3; border-color:#f1f3f3 !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:var(--ink); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="base-input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:#fafbfb; border:1px dashed #dde3e4; box-shadow:none; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { background:#1f2527; box-shadow:none; }
+body:has(.morning-theme) .sb-foot { border-top:1px solid #eef0f1; }
+body:has(.morning-theme) .sb-chip { background:#fff; border:1px solid #e6eaeb; box-shadow:none; color:var(--muted); }
+body:has(.morning-theme) .sb-chip.on { background:#e4f4e9; border-color:#d3ead9; color:#3f7a56; box-shadow:none; }
+
+/* consistent soft 3D depth across the entire morning report page */
+body:has(.morning-theme) .section-title { text-shadow:0 1px 0 #fff; }
+body:has(.morning-theme) .section-title::before { box-shadow:0 2px 4px rgba(83,136,98,.22),inset 0 1px 0 rgba(255,255,255,.7); }
+body:has(.morning-theme) .hero-title { text-shadow:0 1px 0 #fff,0 2px 5px rgba(31,37,39,.08); }
+body:has(.morning-theme) .report-cell { transition:transform .16s ease,box-shadow .16s ease; }
+body:has(.morning-theme) .report-cell:hover { transform:translateY(-2px); box-shadow:0 3px 5px rgba(43,60,49,.08),0 10px 17px rgba(43,60,49,.13),inset 0 2px 0 rgba(255,255,255,.98); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stExpander"] { box-shadow:0 2px 4px rgba(37,57,43,.06),0 8px 18px rgba(50,70,58,.11),inset 0 1px 0 #fff; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"] { box-shadow:0 2px 4px rgba(37,57,43,.06),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { box-shadow:0 2px 4px rgba(37,57,43,.05),0 7px 14px rgba(50,70,58,.09),inset 0 1px 0 #fff; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
+body:has(.morning-theme) .stButton > button { box-shadow:0 3px 0 #b8c0c2,0 6px 12px rgba(31,37,39,.16),inset 0 1px 0 rgba(255,255,255,.45); transition:transform .14s ease,box-shadow .14s ease; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover,
+body:has(.morning-theme) .stButton > button:hover { transform:translateY(-2px); box-shadow:0 4px 0 #b8c0c2,0 9px 16px rgba(31,37,39,.2),inset 0 1px 0 rgba(255,255,255,.5); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { box-shadow:0 2px 4px rgba(37,57,43,.06),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff !important; }
+body:has(.morning-theme) .sb-chip { box-shadow:0 2px 4px rgba(37,57,43,.06),inset 0 1px 0 #fff; }
+body:has(.morning-theme) .sb-chip.on { box-shadow:0 2px 5px rgba(73,120,88,.12),inset 0 1px 0 rgba(255,255,255,.9); }
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { box-shadow:0 2px 4px rgba(37,57,43,.05),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff; }
+
+/* warm magma palette matched to the morning page logo */
+body:has(.morning-theme) {
+    --ink:#302019; --muted:#8b7568; --blue:#c13a27; --blue2:#e86d25;
+    --rose:#b92325; --grad:linear-gradient(120deg,#a91e24 0%,#e94f24 52%,#ffc642 100%);
+    --line:#f0d9c8; --line-strong:#d99a65;
+    --sh:0 2px 4px rgba(115,53,26,.08),0 12px 26px rgba(155,72,31,.15),0 24px 42px rgba(155,72,31,.07);
+    --sh-sm:0 2px 4px rgba(115,53,26,.07),0 6px 13px rgba(155,72,31,.11);
+    --sh-in:inset 0 2px 4px rgba(115,53,26,.08),inset 0 1px 0 rgba(255,255,255,.9);
+}
+body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#fffdf9,#fff6ed 58%,#fffaf2); }
+body:has(.morning-theme) .hero-kicker { color:#c9572d; }
+body:has(.morning-theme) .hero-title { color:#302019; }
+body:has(.morning-theme) .section-title { color:#51271e; }
+body:has(.morning-theme) .section-title::before { background:linear-gradient(160deg,#b51e24,#ee5926 60%,#ffc642); box-shadow:0 2px 6px rgba(208,74,35,.28),inset 0 1px 0 rgba(255,255,255,.7); }
+body:has(.morning-theme) .focus-card { background:linear-gradient(145deg,#fffdf9 0%,#fff0dc 52%,#ffe3bf 100%); border-color:#efc394; box-shadow:0 2px 3px rgba(100,43,22,.08),0 12px 24px rgba(177,84,35,.17),0 22px 38px rgba(177,84,35,.08),inset 0 2px 0 rgba(255,255,255,.97),inset 0 -2px 4px rgba(177,84,35,.08); }
+body:has(.morning-theme) .focus-card:hover { box-shadow:0 3px 5px rgba(100,43,22,.1),0 16px 28px rgba(177,84,35,.22),0 28px 42px rgba(177,84,35,.11),inset 0 2px 0 rgba(255,255,255,.98); }
+body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff9f3 0%,#ffe3d7 48%,#ffc9b5 100%); border-color:#e9a185; box-shadow:0 2px 3px rgba(108,34,22,.08),0 12px 24px rgba(180,49,31,.18),0 22px 38px rgba(180,49,31,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(180,49,31,.08); }
+body:has(.morning-theme) .focus-card.alert .focus-value,
+body:has(.morning-theme) .report-value.alert { color:#b92325; }
+body:has(.morning-theme) .report-wrap { background:linear-gradient(150deg,#fffefa,#fff8ef); border-color:#e9c9ad; box-shadow:0 2px 4px rgba(91,52,27,.07),0 12px 28px rgba(133,75,36,.15),0 24px 44px rgba(133,75,36,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(133,75,36,.05); }
+body:has(.morning-theme) .report-group { border-color:#efd8c3; color:#87523a; }
+body:has(.morning-theme) .report-cell { border-color:rgba(164,91,48,.2) !important; box-shadow:0 2px 3px rgba(91,52,27,.07),0 6px 12px rgba(133,75,36,.1),inset 0 2px 0 rgba(255,255,255,.95),inset 0 -2px 3px rgba(133,75,36,.05); }
+body:has(.morning-theme) .report-cell.tone0 { background:linear-gradient(160deg,#fff2dd,#fffaf1); }
+body:has(.morning-theme) .report-cell.tone1 { background:linear-gradient(160deg,#ffe7d5,#fff8f0); }
+body:has(.morning-theme) .report-cell.tone2 { background:linear-gradient(160deg,#ffe1d8,#fff7f2); }
+body:has(.morning-theme) .report-cell.tone3 { background:linear-gradient(160deg,#ffebe0,#fff9f4); }
+body:has(.morning-theme) .report-cell.tone4 { background:linear-gradient(160deg,#fff0d2,#fffaf0); }
+body:has(.morning-theme) .report-cell.tone5 { background:linear-gradient(160deg,#fff4cb,#fffdf3); }
+body:has(.morning-theme) .report-cell.tone6 { background:linear-gradient(160deg,#ffe5c8,#fff8ea); }
+body:has(.morning-theme) .report-cell.tone7 { background:linear-gradient(160deg,#f8e5d4,#fff8f1); }
+body:has(.morning-theme) [class*="st-key-card"] { background:linear-gradient(150deg,#fffefa,#fff7ed); border-color:#e8cbb2; box-shadow:0 2px 4px rgba(91,52,27,.07),0 12px 26px rgba(133,75,36,.16),0 22px 38px rgba(133,75,36,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(133,75,36,.05); }
+body:has(.morning-theme) [class*="st-key-card"]:hover { box-shadow:0 4px 6px rgba(91,52,27,.09),0 16px 30px rgba(133,75,36,.22),0 28px 44px rgba(133,75,36,.1),inset 0 2px 0 #fff; }
+body:has(.morning-theme) .chart-sub { border-color:#edd5bf; }
+body:has(.morning-theme) [data-testid="stSidebar"] { background:linear-gradient(180deg,#fffaf4,#fff4e8); border-color:#efd6c0; }
+body:has(.morning-theme) .sb-brand { border-color:#eed2b7; }
+body:has(.morning-theme) .sb-name { color:#38231a; }
+body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:#967463; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(120deg,#a91e24,#e94f24 58%,#f6a22c); border-color:#d6552d !important; box-shadow:0 5px 12px rgba(177,66,35,.22),inset 0 1px 0 rgba(255,255,255,.55); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#fffaf3; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:hover { background:#fff1e4; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="base-input"],
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"],
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
+body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fffdf9 !important; border-color:#e8c9ad !important; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:linear-gradient(145deg,#fffaf3,#fff0df); border-color:#e6b98c; }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
+body:has(.morning-theme) .stButton > button { background:linear-gradient(120deg,#a91e24 0%,#e94f24 55%,#f6a22c 100%); color:#fffaf1; box-shadow:0 3px 0 #a64228,0 7px 14px rgba(177,66,35,.24),inset 0 1px 0 rgba(255,255,255,.48); }
+body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover,
+body:has(.morning-theme) .stButton > button:hover { background:linear-gradient(120deg,#b91f25 0%,#f05a24 55%,#ffb331 100%); box-shadow:0 4px 0 #a64228,0 10px 18px rgba(177,66,35,.29),inset 0 1px 0 rgba(255,255,255,.52); }
+body:has(.morning-theme) .sb-foot { border-color:#eed2b7; }
+body:has(.morning-theme) .sb-chip { background:#fffaf4; border-color:#ecd4be; color:#8a6350; }
+body:has(.morning-theme) .sb-chip.on { background:linear-gradient(120deg,#a91e24,#e94f24 58%,#f6a22c); border-color:#d6552d; color:#fffaf3; }
+body:has(.morning-theme) .report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
+body:has(.morning-theme) .report-cell.status-complete .report-value { color:#477d52; }
+body:has(.morning-theme) .report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
+body:has(.morning-theme) .report-cell.status-progress .report-value { color:#9d6925; }
+body:has(.morning-theme) .report-cell.status-transit { background:linear-gradient(160deg,#fff,#f7f9fc) !important; border-color:#dde5ed !important; border-top-color:#5d8fba !important; }
+body:has(.morning-theme) .report-cell.status-transit .report-value { color:#4a779c; }
+body:has(.morning-theme) .report-cell.status-alert { background:linear-gradient(160deg,#fff,#fcf7f7) !important; border-color:#ecdede !important; border-top-color:#bc5a5c !important; }
+body:has(.morning-theme) .report-cell.status-alert .report-value { color:#a64d4f; }
+body:has(.morning-theme) .report-cell.status-special { background:linear-gradient(160deg,#fff,#f9f7fc) !important; border-color:#e5dfed !important; border-top-color:#896eb0 !important; }
+body:has(.morning-theme) .report-cell.status-special .report-value { color:#765d99; }
+body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
+body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#626a70; }
+body:has(.morning-theme) .report-group,
+body:has(.morning-theme) .report-cell .report-label,
+body:has(.morning-theme) .report-cell .report-value { color:#171717 !important; }
+body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(125deg,#101713 0%,#142d20 48%,#176743 100%) !important; border-color:#63f5a6 !important; box-shadow:0 0 0 1px rgba(99,245,166,.3),0 0 12px rgba(70,255,160,.24),0 12px 26px rgba(10,57,34,.3),0 24px 42px rgba(10,57,34,.18),inset 0 2px 0 rgba(218,255,235,.24),inset 0 -3px 6px rgba(0,0,0,.32) !important; }
+body:has(.morning-theme) .focus-card.status-complete::after { background:radial-gradient(circle,rgba(116,255,181,.5),rgba(116,255,181,0) 72%); }
+body:has(.morning-theme) .focus-card.status-complete .focus-label,
+body:has(.morning-theme) .focus-card.status-complete .focus-unit { color:#d9ffea !important; }
+body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#7dffb5 !important; text-shadow:0 0 8px rgba(94,255,170,.5); }
+body:has(.morning-theme) .focus-card.alert { background:linear-gradient(115deg,#21110d 0%,#791b12 34%,#d52f20 67%,#f47725 100%) !important; border-color:#f18a52 !important; box-shadow:0 2px 4px rgba(75,24,14,.16),0 12px 24px rgba(163,48,22,.25),0 22px 38px rgba(163,48,22,.12),inset 0 2px 0 rgba(255,230,199,.55),inset 0 -3px 6px rgba(44,13,9,.3) !important; }
+body:has(.morning-theme) .focus-card.alert .focus-label,
+body:has(.morning-theme) .focus-card.alert .focus-unit { color:#fff1e5 !important; }
+body:has(.morning-theme) .focus-card.alert .focus-value { color:#ffe08a !important; text-shadow:0 1px 2px rgba(58,13,7,.5); }
+
+"""
+MORNING_COMPACT_CSS = r"""
+/* compact sizing for the morning page */
+.focus-grid { gap:10px; margin:3px 0; }
+.focus-label { font-size:.76rem; }
+.focus-value { font-size:1.7rem; margin:2px 0; }
+.focus-unit { font-size:.68rem; }
+.report-wrap.compact { padding:3px 5px 5px; }
+.report-wrap.compact .report-head { padding:3px 7px 4px; font-size:.9rem; }
+.report-wrap.compact .report-grid { gap:4px; }
+.report-wrap.compact .report-group { font-size:.74rem; padding:1px 2px; }
+.report-wrap.compact .report-cell { min-height:50px; padding:3px 4px; gap:2px; }
+.report-wrap.compact .report-label { font-size:.72rem; line-height:1.14; }
+.report-wrap.compact .report-value { font-size:1.02rem; }
+[class*="st-key-card"] { padding:.4rem .5rem .25rem; }
+.chart-title { font-size:.82rem; margin-bottom:2px; }
+.chart-sub { font-size:.64rem; margin-bottom:3px; padding-bottom:3px; }
+"""
+HISTORY_CSS = r"""
+        body:has(.history-theme) [data-testid="stMainBlockContainer"] { padding-top:.35rem; padding-bottom:.4rem; }
+        body:has(.history-theme) [data-testid="stVerticalBlock"] { gap:.42rem; }
+        body:has(.history-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); }
+        body:has(.history-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:1px 4px 0; margin:0; border-radius:0; }
+        body:has(.history-theme) .hero-kicker { color:#48658b; font-size:.55rem; }
+        body:has(.history-theme) .hero-title { color:#172c4b; font-size:1.45rem; margin:0; }
+        body:has(.history-theme) .hero-subtitle { color:#48658b; font-size:.68rem; margin:0; }
+        body:has(.history-theme) .hero-bar { display:none; }
+        body:has(.history-theme) .section-title { color:#172c4b; font-size:.88rem; margin:5px 0 2px; padding-bottom:0; }
+        body:has(.history-theme) .section-title::before { background:linear-gradient(160deg,#101b32,#24579b 65%,#80b5f2); box-shadow:0 2px 7px rgba(31,75,135,.3); }
+        body:has(.history-theme) .focus-card { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%); border:1px solid #6e9ed8; box-shadow:0 0 0 1px rgba(83,142,216,.2),0 8px 18px rgba(18,48,88,.22),0 18px 32px rgba(18,48,88,.14),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28); }
+        body:has(.history-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(150,197,255,.38),rgba(150,197,255,0) 72%); pointer-events:none; }
+        body:has(.history-theme) .focus-card .focus-label { color:#e1efff; }
+        body:has(.history-theme) .focus-card .focus-value { color:#fff !important; text-shadow:0 0 10px rgba(111,174,255,.32); }
+        body:has(.history-theme) .focus-card .focus-unit,
+        body:has(.history-theme) .focus-card .focus-value span { color:#b7d5f8 !important; }
+        body:has(.history-theme) .focus-grid { gap:8px; margin:1px 0 2px; }
+        body:has(.history-theme) .focus-card { padding:8px 16px 7px; border-radius:18px; }
+        body:has(.history-theme) .focus-label { font-size:.72rem; }
+        body:has(.history-theme) .focus-value { font-size:1.8rem; line-height:1.15; margin:1px 0; }
+        body:has(.history-theme) .focus-unit { font-size:.62rem; }
+        body:has(.history-theme) .focus-card.status-complete { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%) !important; border-color:#6e9ed8 !important; box-shadow:0 0 0 1px rgba(83,142,216,.22),0 8px 18px rgba(18,48,88,.24),0 18px 32px rgba(18,48,88,.15),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28) !important; }
+        body:has(.history-theme) .focus-card.alert { background:linear-gradient(135deg,#fff 0%,#eaf3ff 58%,#d8e9ff 100%) !important; border-color:#eaa341 !important; box-shadow:0 0 0 1px rgba(234,163,65,.18),0 7px 17px rgba(54,82,118,.16),0 0 16px rgba(245,178,63,.2),inset 0 2px 0 rgba(255,255,255,.98),inset 0 -3px 5px rgba(64,91,127,.08) !important; }
+        body:has(.history-theme) .focus-card.alert::after { background:radial-gradient(circle,rgba(255,197,76,.62),rgba(255,146,45,0) 72%); }
+        body:has(.history-theme) .focus-card.alert .focus-label { color:#142a49 !important; }
+        body:has(.history-theme) .focus-card.alert .focus-unit,
+        body:has(.history-theme) .focus-card.alert .focus-value span { color:#354b67 !important; text-shadow:none; }
+        body:has(.history-theme) .focus-card.alert .focus-value .focus-number { color:transparent !important; -webkit-text-fill-color:transparent !important; font-size:inherit !important; font-weight:inherit !important; line-height:inherit !important; background:linear-gradient(100deg,#171717 0%,#a94316 48%,#e3a11b 78%,#f2c94c 100%); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 1px 2px rgba(176,92,22,.2)); }
+        body:has(.history-theme) .report-wrap { background:linear-gradient(150deg,#fff,#edf4ff); border-color:#b8cce5; box-shadow:0 2px 4px rgba(27,54,89,.07),0 12px 28px rgba(34,73,122,.15),0 24px 44px rgba(34,73,122,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(45,83,130,.05); }
+        body:has(.history-theme) .report-head { border-color:#c6d7ec; color:#172c4b; }
+        body:has(.history-theme) .report-date,
+        body:has(.history-theme) .report-group { color:#294d7d; }
+        body:has(.history-theme) .report-group { border-color:#c6d7ec; }
+        body:has(.history-theme) .report-wrap.compact { padding:2px 4px 4px; border-radius:18px; }
+        body:has(.history-theme) .report-wrap.compact .report-head { padding:2px 6px 3px; margin-bottom:0; font-size:.82rem; }
+        body:has(.history-theme) .report-wrap.compact .report-grid { gap:3px; padding:1px; }
+        body:has(.history-theme) .report-wrap.compact .report-group { font-size:.68rem; line-height:1.08; padding:0 2px 1px; }
+        body:has(.history-theme) .report-wrap.compact .report-cell { min-height:46px; padding:2px 3px; border-radius:8px; gap:1px; }
+        body:has(.history-theme) .report-wrap.compact .report-label { font-size:.66rem; line-height:1.08; }
+        body:has(.history-theme) .report-wrap.compact .report-value { font-size:.95rem; }
+        body:has(.history-theme) .report-cell { background:linear-gradient(145deg,#fff 0%,#eaf2fd 100%) !important; border-color:#c2d3e9 !important; border-top-color:#477bb9 !important; box-shadow:0 3px 7px rgba(27,54,89,.12),inset 0 2px 0 rgba(255,255,255,.96); }
+        body:has(.history-theme) .report-label { color:#233d60 !important; }
+        body:has(.history-theme) .report-value { color:#142a49 !important; }
+        body:has(.history-theme) [class*="st-key-card"] { background:linear-gradient(145deg,#fff 0%,#e9f2ff 100%); border-color:#b7cce6; box-shadow:0 3px 8px rgba(27,54,89,.11),0 12px 24px rgba(34,73,122,.12),inset 0 2px 0 rgba(255,255,255,.96); }
+        body:has(.history-theme) .chart-title { color:#172c4b; }
+        body:has(.history-theme) .chart-sub { color:#48658b; border-color:#c6d7ec; }
+        body:has(.history-theme) [class*="st-key-card_hist"] { padding:.35rem .45rem .2rem; border-radius:20px; }
+        body:has(.history-theme) .chart-title { font-size:.8rem; margin-bottom:1px; }
+        body:has(.history-theme) .chart-sub { font-size:.62rem; margin-bottom:2px; padding-bottom:2px; }
+"""
+st.markdown("<style>" + BASE_CSS + "</style>", unsafe_allow_html=True)
 
 
 # =========================================================================
@@ -965,12 +1210,282 @@ def chart_card_title(title, sub=""):
     )
 
 
+# =========================================================================
+# โหมดพรีเซนต์: รวมหน้า 1 + หน้า 2 เป็น HTML หน้าเดียว
+# (ใช้ HTML ชุดเดียวกันทั้งพรีวิวในแอปและไฟล์ที่ดาวน์โหลด)
+# =========================================================================
+MORNING_ACCENTS = ["#83c89d", "#8eb7df", "#aa94d0", "#f1bd69", "#e789a9", "#efd479", "#e99c82"]
+
+DECK_CSS = """
+html, body { margin:0; background:#e9eef5; }
+body { padding:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.deck { max-width:1600px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
+.slide { border-radius:28px; padding:14px 20px 18px; box-shadow:0 2px 6px rgba(43,57,78,.08),0 14px 30px rgba(43,57,78,.10); }
+.slide.theme-hist { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); border:1px solid #c6d7ec; }
+.slide.theme-morn { background:linear-gradient(145deg,#fffdf9,#fff6ed 58%,#fffaf2); border:1px solid #efd6c0; }
+.chart-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:10px; }
+.chart-grid > * { min-width:0; }
+.toolbar { max-width:1600px; margin:0 auto 10px; display:flex; justify-content:flex-end; }
+.toolbar button { font-family:inherit; font-size:.8rem; font-weight:600; color:#2d3650; background:#fff; border:1px solid #9aaccb; border-radius:10px; padding:6px 14px; cursor:pointer; }
+.toolbar button:hover { background:#eef2f8; }
+@media (max-width:900px) { .chart-grid { grid-template-columns:1fr; } }
+@media print {
+    html, body { background:#fff; }
+    body { padding:0; }
+    .no-print { display:none !important; }
+    .slide { break-inside:avoid; box-shadow:none; }
+    .focus-card:hover, .report-cell:hover, [class*="st-key-card"]:hover { transform:none; }
+}
+"""
+
+
+def _scope_rules(css, scope):
+    """Prefix every one-line CSS rule with a scope selector (comments are kept as-is)."""
+    out = []
+    for line in css.splitlines():
+        stripped = line.strip()
+        if "{" in stripped and not stripped.startswith("/*"):
+            selector, rest = stripped.split("{", 1)
+            line = f"{scope} {selector.strip()} {{{rest}"
+        out.append(line)
+    return "\n".join(out)
+
+
+def _deck_css():
+    """Page CSS re-scoped so the blue history theme and the warm morning theme can share one page."""
+    hist = HISTORY_CSS.replace("body:has(.history-theme)", ".theme-hist")
+    morn = MORNING_THEME_CSS.replace("body:has(.morning-theme)", ".theme-morn")
+    morn_compact = _scope_rules(MORNING_COMPACT_CSS, ".theme-morn")
+    return "\n".join([BASE_CSS, hist, morn, morn_compact, DECK_CSS])
+
+
+@st.cache_resource(show_spinner=False)
+def _plotly_js():
+    from plotly.offline import get_plotlyjs
+
+    return get_plotlyjs()
+
+
+def _fig_html(fig):
+    return fig.to_html(
+        full_html=False,
+        include_plotlyjs=False,
+        default_width="100%",
+        config={"displayModeBar": False, "responsive": True},
+    )
+
+
+def _chart_card_html(key, title, sub, fig):
+    return (
+        f'<div class="st-key-card_{key}"><div class="chart-title">{title}</div>'
+        f'<div class="chart-sub">{sub}</div>{_fig_html(fig)}</div>'
+    )
+
+
+def _focus_card_html(css_class, label, value_html, unit):
+    return (
+        f'<div class="focus-card {css_class}"><div class="focus-label">{label}</div>'
+        f'<div class="focus-value">{value_html}</div><div class="focus-unit">{unit}</div></div>'
+    )
+
+
+def _hero_html(sheet_name):
+    return (
+        '<div class="hero"><div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
+        f'<div class="hero-title">{NAV_ICON[sheet_name]} {sheet_name}</div>'
+        '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
+        '<div class="hero-bar"></div></div>'
+    )
+
+
+def _history_report_numbers():
+    """Page-1 figures, calculated exactly as the history page does."""
+    ss = st.session_state
+    values = {key: ss.get(key, default) for key, default in REPORT_DEFAULTS.items()}
+    extra = values["hist_extra"]
+    extra_chart = 0 if extra is None else extra
+    not_recv = values["hist_not_po"] + values["hist_not_billed"]
+    complete_base = max(0, values["hist_complete"] - extra_chart)
+    values.update(
+        extra_chart=extra_chart,
+        extra_label="ตรวจสอบคีย์" if extra is None else f"{extra:,}",
+        not_recv=not_recv,
+        pct_not_recv=(not_recv / values["hist_total_recv"] * 100) if values["hist_total_recv"] > 0 else 0,
+        complete_base=complete_base,
+        complete_base_label="ตรวจสอบคีย์" if extra is None else f"{complete_base:,}",
+        complete_all=complete_base + extra_chart,
+    )
+    return values
+
+
+def _morning_report_numbers():
+    """Page-2 figures, calculated exactly as the morning page does."""
+    ss = st.session_state
+    values = {key: ss.get(key, default) for key, default in MORNING_DEFAULTS.items()}
+    inv_all = values["inv_all"]
+    total_remaining = (
+        values["recv_start"] + values["in_transit"]
+        + values["sup_night_missing"] + values["sup_morning_missing"]
+    )
+    values.update(
+        complete_all=values["complete_night"] + values["complete_morning"] + values["extra_work"],
+        pct_night_received=(values["complete_night"] / inv_all * 100) if inv_all > 0 else 0,
+        total_remaining=total_remaining,
+        pct_remaining=((values["sup_night_missing"] + values["sup_morning_missing"]) / inv_all * 100) if inv_all > 0 else 0,
+    )
+    return values
+
+
+def _history_slide_html(h, date_text):
+    focus = (
+        '<div class="focus-grid">'
+        + _focus_card_html(
+            "status-complete", "📦 งาน Complete รวมทั้งหมด",
+            f'{h["complete_all"]:,} <span>Pallets</span>',
+            "ยอด Complete ปกติ + งานนอกรอบ จาก RP03",
+        )
+        + _focus_card_html(
+            "alert", "🌙 งานไม่ได้รับทั้งหมด",
+            f'<span class="focus-number">{h["not_recv"]:,}</span> <span>Pallets</span>',
+            "รวม Reject / ส่งไม่ครบ PO และยังไม่ยื่นบิล",
+        )
+        + "</div>"
+    )
+    rows = [
+        ("group", "ภาพรวมยอดประมาณการและงานรับ"),
+        ("ประมาณการรับ (Inventory)", f'{h["hist_inv"]:,}', False),
+        ("งานรับทั้งหมด (16.10 น.)", f'{h["hist_total_recv"]:,}', False),
+        ("group", "งาน Complete"),
+        ("งาน Complete จาก RP03 (หักงานนอกรอบแล้ว)", h["complete_base_label"], False),
+        ("งานนอกรอบ Complete (ส่วนย่อย RP03)", h["extra_label"], False),
+        ("งาน Complete รวมจาก RP03 (Total Case Qty)", f'{h["complete_all"]:,}', False),
+        ("group", "งานค้างส่ง"),
+        ("งานไม่ได้รับ (%)", f'{h["pct_not_recv"]:.2f}%', True),
+        ("เลื่อนส่ง", _format_quantity(h["hist_delayed"]), False),
+        ("Reject / ส่งไม่ครบตาม PO", _format_quantity(h["hist_not_po"]), False),
+        ("ยังไม่ยื่นบิล", f'{h["hist_not_billed"]:,}', False),
+        ("งานไม่ได้รับทั้งหมด", f'{h["not_recv"]:,}', True),
+    ]
+    table = report_table(
+        "สรุปงานรับและงานค้างส่ง ประจำวันที่", date_text, "(00.00-22.00 น.)",
+        rows, 6, compact=True, accent_colors=DEFAULT_RAINBOW,
+    )
+    bars = metric_bar_3d_chart(
+        ["งานรับทั้งหมด RP01", "Complete หลังหักนอกรอบ", "งานนอกรอบ"],
+        [h["hist_total_recv"], h["complete_base"], h["extra_chart"]],
+        reference=h["hist_total_recv"], height=250,
+        palette=["#29476d", "#3d78bd", "#83a9d4"],
+    )
+    donut = pending_donut_chart(h["hist_not_billed"], h["hist_not_po"], h["not_recv"], height=250)
+    charts = (
+        '<div class="chart-grid">'
+        + _chart_card_html(
+            "hist_tube", "📊 เปรียบเทียบยอดรับและงาน Complete",
+            "Complete ปกติ = RP03 Total Case Qty − งานนอกรอบ · เทียบกับ RP01 16.10", bars,
+        )
+        + _chart_card_html(
+            "hist_radial", "🚨 งานไม่ได้รับทั้งหมด · สัดส่วน",
+            f'เลื่อนส่ง {_format_quantity(h["hist_delayed"])} Pallets แสดงแยกจากยอดนี้', donut,
+        )
+        + "</div>"
+    )
+    return (
+        '<section class="slide theme-hist">'
+        + _hero_html(NAV[0]) + focus
+        + '<div class="section-title">ตารางสรุปรายงาน</div>' + table
+        + '<div class="section-title">กราฟสรุปภาพรวม</div>' + charts
+        + "</section>"
+    )
+
+
+def _morning_slide_html(m, date_text):
+    focus = (
+        '<div class="focus-grid">'
+        + _focus_card_html(
+            "status-complete", "📦 ยอดงาน Complete รวมทั้งหมด",
+            f'{m["complete_all"]:,} <span>Pallets</span>', "รวมกะดึก + กะเช้า + งานนอกรอบ",
+        )
+        + _focus_card_html(
+            "alert", "🚨 Supplier ที่ยังไม่ Check-in",
+            f'{m["total_remaining"]:,} <span>Pallets</span>', "แยกช่วงเวลาไว้ในตารางสรุปด้านล่าง",
+        )
+        + "</div>"
+    )
+    rows = [
+        ("group", "ภาพรวมยอดประมาณการและงานรับ"),
+        ("ยอดงานประมาณการรับทั้งหมด", f'{m["inv_all"]:,}', False),
+        ("ยอดงานรับกะดึก (18.00-06.00)", f'{m["night_received"]:,}', False),
+        ("ยอดงานรับกะเช้า (07.00-18.00)", f'{m["morning_received"]:,}', False),
+        ("group", "งาน Complete"),
+        ("ยอดงาน Complete รับกะดึก (18.00-06.00)", f'{m["complete_night"]:,}', False),
+        ("ยอดงาน Complete รับกะเช้า (07.00-18.00)", f'{m["complete_morning"]:,}', False),
+        ("งาน Complete นอกรอบ (RP03)", f'{m["extra_work"]:,}', False),
+        ("(%) สรุปยอดงานรับกะดึก", f'{m["pct_night_received"]:.2f}%', False),
+        ("group", "งานรับคงเหลือ"),
+        ("สรุปงานรับคงเหลือทั้งหมด\n(Pallets)", f'{m["total_remaining"]:,}', False),
+        ("งานรับคงเหลือทั้งหมด\nกำลังลงสินค้า (Receiving Start)", f'{m["recv_start"]:,}', False),
+        ("งานรับคงเหลือทั้งหมด\nInTransit ที่ Check-in แล้ว", f'{m["in_transit"]:,}', False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะดึก (18.00-06.00)", f'{m["sup_night_missing"]:,}', False),
+        ("งานรับคงเหลือทั้งหมด\nSupplier ที่ยังไม่มาส่งกะเช้า (07.00-18.00)", f'{m["sup_morning_missing"]:,}', False),
+        ("(%) Supplier ค้างรับรวม", f'{m["pct_remaining"]:.2f}%', True),
+    ]
+    table = report_table(
+        "รายงานการรับสินค้าประจำวันที่", date_text, "(ตาม Window Time 00.00-23.59 น.)",
+        rows, 6, compact=True, accent_colors=MORNING_ACCENTS,
+    )
+    bars_total = metric_bar_3d_chart(
+        ["ประมาณการรับทั้งหมด", "งาน Complete รวม"],
+        [m["inv_all"], m["complete_all"]],
+        palette=["#8b9399", "#45d894"], reference=m["inv_all"], height=250,
+    )
+    bars_remaining = metric_bar_3d_chart(
+        ["กำลังลงสินค้า", "InTransit (Check-in แล้ว)", "Supplier กะดึก", "Supplier กะเช้า"],
+        [m["recv_start"], m["in_transit"], m["sup_night_missing"], m["sup_morning_missing"]],
+        palette=["#e4a62e", "#5d9bcb", "#e63e2d", "#fa7a27"], height=240,
+    )
+    charts = (
+        '<div class="chart-grid">'
+        + _chart_card_html(
+            "radial_1", "ประมาณการรับเทียบยอดงาน Complete",
+            "เปรียบเทียบยอดรวม ไม่แยกกะ · Complete รวมงานนอกรอบ", bars_total,
+        )
+        + _chart_card_html(
+            "radial_2", "สรุปงานรับคงเหลือทั้งหมด", "หน่วย Pallets แยกตามสถานะ", bars_remaining,
+        )
+        + "</div>"
+    )
+    return (
+        '<section class="slide theme-morn">'
+        + _hero_html(NAV[1]) + focus
+        + '<div class="section-title">ตารางสรุปรายงาน</div>' + table
+        + '<div class="section-title">กราฟสรุปภาพรวม</div>' + charts
+        + "</section>"
+    )
+
+
+def build_deck_html(history, morning, hist_date, morning_date):
+    """One self-contained HTML page: page 1 (history) on top, page 2 (morning) below. No sidebar, no inputs."""
+    return (
+        '<!doctype html><html lang="th"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        "<title>DCSB Distribution Center · สรุปงานรับ</title>"
+        f"<style>{_deck_css()}</style>"
+        f'<script charset="utf-8">{_plotly_js()}</script></head><body>'
+        '<div class="toolbar no-print"><button onclick="window.print()">🖨️ พิมพ์ / บันทึกเป็น PDF</button></div>'
+        '<div class="deck">'
+        + _history_slide_html(history, hist_date.strftime("%d/%m/%Y"))
+        + _morning_slide_html(morning, morning_date.strftime("%d/%m/%Y"))
+        + "</div></body></html>"
+    )
+
+
 # --- Sidebar เมนูเลือกชีตรายงาน ---
 NAV = [
     "สรุปงานรับและงานค้างส่ง(ย้อนหลัง)",
     "สถานการณ์การรับ(กะเช้าปัจจุบัน)",
+    "รวม 2 หน้า (โหมดพรีเซนต์)",
 ]
-NAV_ICON = {NAV[0]: "🌙", NAV[1]: "☀️"}
+NAV_ICON = {NAV[0]: "🌙", NAV[1]: "☀️", NAV[2]: "🖥️"}
 
 st.sidebar.markdown(
     '<div class="sb-brand"><div class="sb-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 20 7v10l-8 4.2L4 17V7z"/><path d="M4 7l8 4.2L20 7"/><path d="M12 11.2v10"/><path d="M8 4.9 16 9.1" stroke-opacity=".6"/></svg></div><div>'
@@ -994,210 +1509,12 @@ if sheet_selection == NAV[1]:
     BAR_TEXT = "#1f2527"
     BUBBLE_TEXT = "#1f2527"
     INK, MUTED = "#1f2527", "#8a9296"
-    st.markdown(
-        """
-<style>
-body:has(.morning-theme) {
-    --ink:#1f2527; --muted:#8a9296; --blue:#5b8fc0; --blue2:#8ab4d8;
-    --rose:#e0707f; --grad:linear-gradient(120deg,#cdeed7,#f7e6bd);
-    --line:#eceff0; --line-strong:#e8ecee;
-    --sh:0 1px 2px rgba(31,37,39,.03), 0 10px 28px rgba(31,37,39,.05);
-    --sh-sm:0 1px 2px rgba(31,37,39,.03), 0 4px 14px rgba(31,37,39,.04);
-    --sh-in:none;
-}
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:#fcfcfc; }
-
-/* hero: left-aligned greeting, no card */
-body:has(.morning-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:6px 4px 2px; margin:0 0 4px; border-radius:0; }
-body:has(.morning-theme) .hero-kicker { color:var(--muted); font-size:.62rem; font-weight:500; letter-spacing:.14em; }
-body:has(.morning-theme) .hero-title { color:var(--ink); font-size:1.85rem; font-weight:700; letter-spacing:-.025em; margin:2px 0 0; }
-body:has(.morning-theme) .hero-subtitle { color:var(--muted); font-size:.82rem; }
-body:has(.morning-theme) .hero-bar { display:none; }
-body:has(.morning-theme) .section-title { border-bottom:0; font-size:.95rem; margin:12px 0 4px; padding-bottom:0; }
-body:has(.morning-theme) .section-title::before { width:8px; height:8px; border-radius:50%; background:#83c89d; box-shadow:none; }
-
-/* focus cards: pastel gradient */
-body:has(.morning-theme) .focus-card { background:linear-gradient(145deg,#fff 0%,#e4f5e9 48%,#d2ebda 100%); border:1px solid #c1dfca; border-radius:22px; box-shadow:0 2px 3px rgba(36,65,45,.08),0 12px 24px rgba(73,120,88,.17),0 22px 38px rgba(73,120,88,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(83,136,98,.08); transition:transform .18s ease,box-shadow .18s ease; padding:12px 20px 11px 22px; }
-body:has(.morning-theme) .focus-card:hover { transform:translateY(-3px); box-shadow:0 3px 5px rgba(36,65,45,.1),0 16px 28px rgba(73,120,88,.21),0 28px 42px rgba(73,120,88,.1),inset 0 2px 0 rgba(255,255,255,.98); }
-body:has(.morning-theme) .focus-card::before { display:none; }
-body:has(.morning-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 70%); pointer-events:none; }
-body:has(.morning-theme) .focus-card .focus-value { color:var(--ink); }
-body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff 0%,#fde8e9 48%,#f8d9dc 100%); border-color:#edc3cb; box-shadow:0 2px 3px rgba(83,42,48,.08),0 12px 24px rgba(166,88,98,.17),0 22px 38px rgba(166,88,98,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(166,88,98,.07); }
-body:has(.morning-theme) .focus-card.alert .focus-value { color:var(--rose); }
-
-/* report table */
-body:has(.morning-theme) .report-wrap { background:linear-gradient(150deg,#fff,#f8fbf9); border:1px solid #d8e3dc; border-radius:24px; box-shadow:0 2px 4px rgba(37,57,43,.06),0 12px 28px rgba(50,70,58,.14),0 24px 44px rgba(50,70,58,.06),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(86,117,95,.04); }
-body:has(.morning-theme) .report-head { border-bottom:0; color:var(--ink); }
-body:has(.morning-theme) .report-group { border-bottom:1px solid #f0f2f3; color:var(--muted); font-size:.74rem; font-weight:600; letter-spacing:.04em; }
-body:has(.morning-theme) .report-cell { border:1px solid rgba(90,112,99,.18) !important; box-shadow:0 2px 3px rgba(43,60,49,.07),0 6px 12px rgba(43,60,49,.1),inset 0 2px 0 rgba(255,255,255,.94),inset 0 -2px 3px rgba(70,94,76,.04); border-radius:16px; background:#fff; }
-body:has(.morning-theme) .report-label { color:#6b7478; }
-body:has(.morning-theme) .report-value { color:var(--ink); }
-body:has(.morning-theme) .report-value.alert { color:var(--rose); }
-body:has(.morning-theme) .report-cell.tone0 { background:linear-gradient(160deg,#dcf2e3,#f6fbf8); }
-body:has(.morning-theme) .report-cell.tone1 { background:linear-gradient(160deg,#e1edf9,#f7fbff); }
-body:has(.morning-theme) .report-cell.tone2 { background:linear-gradient(160deg,#ebe5f7,#faf8fe); }
-body:has(.morning-theme) .report-cell.tone3 { background:linear-gradient(160deg,#fde8cd,#fff8ee); }
-body:has(.morning-theme) .report-cell.tone4 { background:linear-gradient(160deg,#fbe2e8,#fff7f9); }
-body:has(.morning-theme) .report-cell.tone5 { background:linear-gradient(160deg,#faf0c8,#fffcec); }
-body:has(.morning-theme) .report-cell.tone6 { background:linear-gradient(160deg,#fadfd5,#fff6f2); }
-body:has(.morning-theme) .report-cell.tone7 { background:linear-gradient(160deg,#d9efec,#f5fbfa); }
-
-/* chart cards, expander, inputs, buttons */
-body:has(.morning-theme) [class*="st-key-card"] { background:linear-gradient(150deg,#fff,#f7fafb); border:1px solid #d9e2e8; border-radius:22px; box-shadow:0 2px 4px rgba(38,56,68,.07),0 12px 26px rgba(45,63,78,.15),0 22px 38px rgba(45,63,78,.06),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(60,87,105,.04); transition:transform .18s ease,box-shadow .18s ease; }
-body:has(.morning-theme) [class*="st-key-card"]:hover { transform:translateY(-3px); box-shadow:0 4px 6px rgba(38,56,68,.08),0 16px 30px rgba(45,63,78,.2),0 28px 44px rgba(45,63,78,.09),inset 0 2px 0 #fff; }
-body:has(.morning-theme) .chart-sub { border-bottom:1px dashed #e6eaeb; }
-body:has(.morning-theme) [data-testid="stExpander"] { background:#fff; border:1px solid #eceff0 !important; border-radius:20px; box-shadow:var(--sh-sm); }
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
-body:has(.morning-theme) [data-testid="stNumberInput"] button { color:var(--muted); }
-body:has(.morning-theme) .stButton > button { background:#1f2527; box-shadow:none; border-radius:12px; }
-
-/* sidebar: white, light-grey active pill */
-body:has(.morning-theme) [data-testid="stSidebar"] { background:#fff; border-right:1px solid #eef0f1; box-shadow:none; }
-body:has(.morning-theme) .sb-brand { background:transparent; border-bottom:1px solid #eef0f1; border-radius:0; padding:5px 6px 14px; margin-bottom:8px; }
-body:has(.morning-theme) .sb-name { color:var(--ink); }
-body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:var(--muted); }
-body:has(.morning-theme) .sb-logo { background:linear-gradient(145deg,#21110d 0%,#791b12 26%,#e43a19 52%,#ff851f 76%,#ffd653 100%); border:1px solid #ffc15b; border-radius:14px; box-shadow:0 0 0 2px rgba(255,105,35,.18),0 0 12px rgba(239,65,25,.58),0 0 24px rgba(255,117,28,.38),0 0 32px rgba(255,193,66,.24),inset 0 2px 0 rgba(255,245,211,.6),inset 0 -3px 7px rgba(91,24,8,.38); }
-body:has(.morning-theme) .sb-logo svg { stroke:#fff9e7; filter:drop-shadow(0 0 3px rgba(255,255,237,.98)) drop-shadow(0 0 7px rgba(255,158,48,.9)) drop-shadow(0 0 10px rgba(255,71,25,.62)); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"] { background:transparent; border:1px solid transparent; box-shadow:none; border-radius:12px; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:hover,
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:hover { background:#f7f8f8; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label p { color:#62696d; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:#f1f3f3; border-color:#f1f3f3 !important; box-shadow:none; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:var(--ink); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="base-input"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"] { background:#fff !important; border:1px solid #e6eaeb !important; box-shadow:none; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:#fafbfb; border:1px dashed #dde3e4; box-shadow:none; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button { background:#1f2527; box-shadow:none; }
-body:has(.morning-theme) .sb-foot { border-top:1px solid #eef0f1; }
-body:has(.morning-theme) .sb-chip { background:#fff; border:1px solid #e6eaeb; box-shadow:none; color:var(--muted); }
-body:has(.morning-theme) .sb-chip.on { background:#e4f4e9; border-color:#d3ead9; color:#3f7a56; box-shadow:none; }
-
-/* consistent soft 3D depth across the entire morning report page */
-body:has(.morning-theme) .section-title { text-shadow:0 1px 0 #fff; }
-body:has(.morning-theme) .section-title::before { box-shadow:0 2px 4px rgba(83,136,98,.22),inset 0 1px 0 rgba(255,255,255,.7); }
-body:has(.morning-theme) .hero-title { text-shadow:0 1px 0 #fff,0 2px 5px rgba(31,37,39,.08); }
-body:has(.morning-theme) .report-cell { transition:transform .16s ease,box-shadow .16s ease; }
-body:has(.morning-theme) .report-cell:hover { transform:translateY(-2px); box-shadow:0 3px 5px rgba(43,60,49,.08),0 10px 17px rgba(43,60,49,.13),inset 0 2px 0 rgba(255,255,255,.98); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stExpander"] { box-shadow:0 2px 4px rgba(37,57,43,.06),0 8px 18px rgba(50,70,58,.11),inset 0 1px 0 #fff; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"] { box-shadow:0 2px 4px rgba(37,57,43,.06),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { box-shadow:0 2px 4px rgba(37,57,43,.05),0 7px 14px rgba(50,70,58,.09),inset 0 1px 0 #fff; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
-body:has(.morning-theme) .stButton > button { box-shadow:0 3px 0 #b8c0c2,0 6px 12px rgba(31,37,39,.16),inset 0 1px 0 rgba(255,255,255,.45); transition:transform .14s ease,box-shadow .14s ease; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover,
-body:has(.morning-theme) .stButton > button:hover { transform:translateY(-2px); box-shadow:0 4px 0 #b8c0c2,0 9px 16px rgba(31,37,39,.2),inset 0 1px 0 rgba(255,255,255,.5); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { box-shadow:0 2px 4px rgba(37,57,43,.06),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff !important; }
-body:has(.morning-theme) .sb-chip { box-shadow:0 2px 4px rgba(37,57,43,.06),inset 0 1px 0 #fff; }
-body:has(.morning-theme) .sb-chip.on { box-shadow:0 2px 5px rgba(73,120,88,.12),inset 0 1px 0 rgba(255,255,255,.9); }
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { box-shadow:0 2px 4px rgba(37,57,43,.05),0 5px 10px rgba(50,70,58,.08),inset 0 1px 0 #fff; }
-
-/* warm magma palette matched to the morning page logo */
-body:has(.morning-theme) {
-    --ink:#302019; --muted:#8b7568; --blue:#c13a27; --blue2:#e86d25;
-    --rose:#b92325; --grad:linear-gradient(120deg,#a91e24 0%,#e94f24 52%,#ffc642 100%);
-    --line:#f0d9c8; --line-strong:#d99a65;
-    --sh:0 2px 4px rgba(115,53,26,.08),0 12px 26px rgba(155,72,31,.15),0 24px 42px rgba(155,72,31,.07);
-    --sh-sm:0 2px 4px rgba(115,53,26,.07),0 6px 13px rgba(155,72,31,.11);
-    --sh-in:inset 0 2px 4px rgba(115,53,26,.08),inset 0 1px 0 rgba(255,255,255,.9);
-}
-body:has(.morning-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#fffdf9,#fff6ed 58%,#fffaf2); }
-body:has(.morning-theme) .hero-kicker { color:#c9572d; }
-body:has(.morning-theme) .hero-title { color:#302019; }
-body:has(.morning-theme) .section-title { color:#51271e; }
-body:has(.morning-theme) .section-title::before { background:linear-gradient(160deg,#b51e24,#ee5926 60%,#ffc642); box-shadow:0 2px 6px rgba(208,74,35,.28),inset 0 1px 0 rgba(255,255,255,.7); }
-body:has(.morning-theme) .focus-card { background:linear-gradient(145deg,#fffdf9 0%,#fff0dc 52%,#ffe3bf 100%); border-color:#efc394; box-shadow:0 2px 3px rgba(100,43,22,.08),0 12px 24px rgba(177,84,35,.17),0 22px 38px rgba(177,84,35,.08),inset 0 2px 0 rgba(255,255,255,.97),inset 0 -2px 4px rgba(177,84,35,.08); }
-body:has(.morning-theme) .focus-card:hover { box-shadow:0 3px 5px rgba(100,43,22,.1),0 16px 28px rgba(177,84,35,.22),0 28px 42px rgba(177,84,35,.11),inset 0 2px 0 rgba(255,255,255,.98); }
-body:has(.morning-theme) .focus-card.alert { background:linear-gradient(145deg,#fff9f3 0%,#ffe3d7 48%,#ffc9b5 100%); border-color:#e9a185; box-shadow:0 2px 3px rgba(108,34,22,.08),0 12px 24px rgba(180,49,31,.18),0 22px 38px rgba(180,49,31,.08),inset 0 2px 0 rgba(255,255,255,.96),inset 0 -2px 4px rgba(180,49,31,.08); }
-body:has(.morning-theme) .focus-card.alert .focus-value,
-body:has(.morning-theme) .report-value.alert { color:#b92325; }
-body:has(.morning-theme) .report-wrap { background:linear-gradient(150deg,#fffefa,#fff8ef); border-color:#e9c9ad; box-shadow:0 2px 4px rgba(91,52,27,.07),0 12px 28px rgba(133,75,36,.15),0 24px 44px rgba(133,75,36,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(133,75,36,.05); }
-body:has(.morning-theme) .report-group { border-color:#efd8c3; color:#87523a; }
-body:has(.morning-theme) .report-cell { border-color:rgba(164,91,48,.2) !important; box-shadow:0 2px 3px rgba(91,52,27,.07),0 6px 12px rgba(133,75,36,.1),inset 0 2px 0 rgba(255,255,255,.95),inset 0 -2px 3px rgba(133,75,36,.05); }
-body:has(.morning-theme) .report-cell.tone0 { background:linear-gradient(160deg,#fff2dd,#fffaf1); }
-body:has(.morning-theme) .report-cell.tone1 { background:linear-gradient(160deg,#ffe7d5,#fff8f0); }
-body:has(.morning-theme) .report-cell.tone2 { background:linear-gradient(160deg,#ffe1d8,#fff7f2); }
-body:has(.morning-theme) .report-cell.tone3 { background:linear-gradient(160deg,#ffebe0,#fff9f4); }
-body:has(.morning-theme) .report-cell.tone4 { background:linear-gradient(160deg,#fff0d2,#fffaf0); }
-body:has(.morning-theme) .report-cell.tone5 { background:linear-gradient(160deg,#fff4cb,#fffdf3); }
-body:has(.morning-theme) .report-cell.tone6 { background:linear-gradient(160deg,#ffe5c8,#fff8ea); }
-body:has(.morning-theme) .report-cell.tone7 { background:linear-gradient(160deg,#f8e5d4,#fff8f1); }
-body:has(.morning-theme) [class*="st-key-card"] { background:linear-gradient(150deg,#fffefa,#fff7ed); border-color:#e8cbb2; box-shadow:0 2px 4px rgba(91,52,27,.07),0 12px 26px rgba(133,75,36,.16),0 22px 38px rgba(133,75,36,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(133,75,36,.05); }
-body:has(.morning-theme) [class*="st-key-card"]:hover { box-shadow:0 4px 6px rgba(91,52,27,.09),0 16px 30px rgba(133,75,36,.22),0 28px 44px rgba(133,75,36,.1),inset 0 2px 0 #fff; }
-body:has(.morning-theme) .chart-sub { border-color:#edd5bf; }
-body:has(.morning-theme) [data-testid="stSidebar"] { background:linear-gradient(180deg,#fffaf4,#fff4e8); border-color:#efd6c0; }
-body:has(.morning-theme) .sb-brand { border-color:#eed2b7; }
-body:has(.morning-theme) .sb-name { color:#38231a; }
-body:has(.morning-theme) .sb-sub, body:has(.morning-theme) .sb-label { color:#967463; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stRadioOption"]:has(input:checked),
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) { background:linear-gradient(120deg,#a91e24,#e94f24 58%,#f6a22c); border-color:#d6552d !important; box-shadow:0 5px 12px rgba(177,66,35,.22),inset 0 1px 0 rgba(255,255,255,.55); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#fffaf3; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stRadio"] label:hover { background:#fff1e4; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-baseweb="base-input"],
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stDateInputField"],
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="input"],
-body:has(.morning-theme) [data-testid="stNumberInput"] [data-baseweb="base-input"] { background:#fffdf9 !important; border-color:#e8c9ad !important; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] { background:linear-gradient(145deg,#fffaf3,#fff0df); border-color:#e6b98c; }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
-body:has(.morning-theme) .stButton > button { background:linear-gradient(120deg,#a91e24 0%,#e94f24 55%,#f6a22c 100%); color:#fffaf1; box-shadow:0 3px 0 #a64228,0 7px 14px rgba(177,66,35,.24),inset 0 1px 0 rgba(255,255,255,.48); }
-body:has(.morning-theme) [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button:hover,
-body:has(.morning-theme) .stButton > button:hover { background:linear-gradient(120deg,#b91f25 0%,#f05a24 55%,#ffb331 100%); box-shadow:0 4px 0 #a64228,0 10px 18px rgba(177,66,35,.29),inset 0 1px 0 rgba(255,255,255,.52); }
-body:has(.morning-theme) .sb-foot { border-color:#eed2b7; }
-body:has(.morning-theme) .sb-chip { background:#fffaf4; border-color:#ecd4be; color:#8a6350; }
-body:has(.morning-theme) .sb-chip.on { background:linear-gradient(120deg,#a91e24,#e94f24 58%,#f6a22c); border-color:#d6552d; color:#fffaf3; }
-body:has(.morning-theme) .report-cell.status-complete { background:linear-gradient(160deg,#fff,#f8fbf8) !important; border-color:#e0e8e1 !important; border-top-color:#5d9568 !important; }
-body:has(.morning-theme) .report-cell.status-complete .report-value { color:#477d52; }
-body:has(.morning-theme) .report-cell.status-progress { background:linear-gradient(160deg,#fff,#fcf9f3) !important; border-color:#ebe4d7 !important; border-top-color:#c4832d !important; }
-body:has(.morning-theme) .report-cell.status-progress .report-value { color:#9d6925; }
-body:has(.morning-theme) .report-cell.status-transit { background:linear-gradient(160deg,#fff,#f7f9fc) !important; border-color:#dde5ed !important; border-top-color:#5d8fba !important; }
-body:has(.morning-theme) .report-cell.status-transit .report-value { color:#4a779c; }
-body:has(.morning-theme) .report-cell.status-alert { background:linear-gradient(160deg,#fff,#fcf7f7) !important; border-color:#ecdede !important; border-top-color:#bc5a5c !important; }
-body:has(.morning-theme) .report-cell.status-alert .report-value { color:#a64d4f; }
-body:has(.morning-theme) .report-cell.status-special { background:linear-gradient(160deg,#fff,#f9f7fc) !important; border-color:#e5dfed !important; border-top-color:#896eb0 !important; }
-body:has(.morning-theme) .report-cell.status-special .report-value { color:#765d99; }
-body:has(.morning-theme) .report-cell.status-neutral { background:linear-gradient(160deg,#fff,#f8f9fa) !important; border-color:#e1e4e6 !important; border-top-color:#9ba2a7 !important; }
-body:has(.morning-theme) .report-cell.status-neutral .report-value { color:#626a70; }
-body:has(.morning-theme) .report-group,
-body:has(.morning-theme) .report-cell .report-label,
-body:has(.morning-theme) .report-cell .report-value { color:#171717 !important; }
-body:has(.morning-theme) .focus-card.status-complete { background:linear-gradient(125deg,#101713 0%,#142d20 48%,#176743 100%) !important; border-color:#63f5a6 !important; box-shadow:0 0 0 1px rgba(99,245,166,.3),0 0 12px rgba(70,255,160,.24),0 12px 26px rgba(10,57,34,.3),0 24px 42px rgba(10,57,34,.18),inset 0 2px 0 rgba(218,255,235,.24),inset 0 -3px 6px rgba(0,0,0,.32) !important; }
-body:has(.morning-theme) .focus-card.status-complete::after { background:radial-gradient(circle,rgba(116,255,181,.5),rgba(116,255,181,0) 72%); }
-body:has(.morning-theme) .focus-card.status-complete .focus-label,
-body:has(.morning-theme) .focus-card.status-complete .focus-unit { color:#d9ffea !important; }
-body:has(.morning-theme) .focus-card.status-complete .focus-value { color:#7dffb5 !important; text-shadow:0 0 8px rgba(94,255,170,.5); }
-body:has(.morning-theme) .focus-card.alert { background:linear-gradient(115deg,#21110d 0%,#791b12 34%,#d52f20 67%,#f47725 100%) !important; border-color:#f18a52 !important; box-shadow:0 2px 4px rgba(75,24,14,.16),0 12px 24px rgba(163,48,22,.25),0 22px 38px rgba(163,48,22,.12),inset 0 2px 0 rgba(255,230,199,.55),inset 0 -3px 6px rgba(44,13,9,.3) !important; }
-body:has(.morning-theme) .focus-card.alert .focus-label,
-body:has(.morning-theme) .focus-card.alert .focus-unit { color:#fff1e5 !important; }
-body:has(.morning-theme) .focus-card.alert .focus-value { color:#ffe08a !important; text-shadow:0 1px 2px rgba(58,13,7,.5); }
-
-/* compact sizing for the morning page */
-.focus-grid { gap:10px; margin:3px 0; }
-.focus-label { font-size:.76rem; }
-.focus-value { font-size:1.7rem; margin:2px 0; }
-.focus-unit { font-size:.68rem; }
-.report-wrap.compact { padding:3px 5px 5px; }
-.report-wrap.compact .report-head { padding:3px 7px 4px; font-size:.9rem; }
-.report-wrap.compact .report-grid { gap:4px; }
-.report-wrap.compact .report-group { font-size:.74rem; padding:1px 2px; }
-.report-wrap.compact .report-cell { min-height:50px; padding:3px 4px; gap:2px; }
-.report-wrap.compact .report-label { font-size:.72rem; line-height:1.14; }
-.report-wrap.compact .report-value { font-size:1.02rem; }
-[class*="st-key-card"] { padding:.4rem .5rem .25rem; }
-.chart-title { font-size:.82rem; margin-bottom:2px; }
-.chart-sub { font-size:.64rem; margin-bottom:3px; padding-bottom:3px; }
-</style>
-""",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<style>" + MORNING_THEME_CSS + MORNING_COMPACT_CSS + "</style>", unsafe_allow_html=True)
     st.markdown('<div class="morning-theme" aria-hidden="true"></div>', unsafe_allow_html=True)
 
 # Keep both page-specific upload sections mounted so Streamlit preserves each
 # page's selected files while the user switches between reports.
+IS_COMBINED = sheet_selection == NAV[2]
 _page_id = "morning" if sheet_selection == NAV[1] else "history"
 
 
@@ -1227,128 +1544,156 @@ def _render_upload_section(page_id, title, expanded):
 
 # Reserve the first sidebar slot for the active report date. The date is
 # populated after reading the uploads, but remains visually above the importers.
+# The combined (presentation) mode shows both pages, so it reserves two slots.
 report_date_slot = st.sidebar.empty()
+report_date_slot_morning = st.sidebar.empty() if IS_COMBINED else report_date_slot
 st.sidebar.markdown('<div class="sb-label">Import ไฟล์แยกตามหน้า</div>', unsafe_allow_html=True)
 _page_uploads = {
-    "history": _render_upload_section("history", "🕘 รายงานย้อนหลัง", _page_id == "history"),
-    "morning": _render_upload_section("morning", "🌅 กะเช้าปัจจุบัน", _page_id == "morning"),
+    "history": _render_upload_section("history", "🕘 รายงานย้อนหลัง", IS_COMBINED or _page_id == "history"),
+    "morning": _render_upload_section("morning", "🌅 กะเช้าปัจจุบัน", IS_COMBINED or _page_id == "morning"),
 }
 _active_uploads = _page_uploads[_page_id]
 uploaded_rp01_1610 = _active_uploads["rp01_1610"]
 uploaded_rp01_2200 = _active_uploads["rp01_2200"]
 uploaded_rp03 = _active_uploads["rp03"]
 uploaded_rp42 = _active_uploads["rp42"]
-_uploaded_files = {
-    "rp01_1610": uploaded_rp01_1610,
-    "rp01_2200": uploaded_rp01_2200,
-    "rp03": uploaded_rp03,
-    "rp42": uploaded_rp42,
-}
-if sheet_selection == NAV[1]:
-    imported, import_error = _load_morning_metrics(_uploaded_files)
-else:
-    imported, import_error = _load_imported_metrics(_uploaded_files)
-report_date_warnings = _report_date_warnings(_uploaded_files, imported.get("report_date"))
-_uploads = (uploaded_rp01_1610, uploaded_rp01_2200, uploaded_rp03, uploaded_rp42)
-_import_signature = hashlib.sha256(
-    "|".join(
-        f"{f.name}:{hashlib.sha256(f.getvalue()).hexdigest()}" if f is not None else "-"
-        for f in _uploads
-    ).encode("utf-8")
-).hexdigest()
-_import_signature_key = f"_last_import_signature_{_page_id}"
-_new_import = _import_signature != st.session_state.get(_import_signature_key)
-if sheet_selection == "สถานการณ์การรับ(กะเช้าปัจจุบัน)":
-    rp01_date = imported.get("report_date")
-    if rp01_date:
-        st.session_state["m_date_input"] = rp01_date
-    elif "m_date_input" not in st.session_state:
-        latest = REPORT_STORE.get("morning_latest_date")
-        st.session_state["m_date_input"] = date.fromisoformat(latest) if latest else date.today()
-    with report_date_slot.container():
-        st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-        morning_date = st.date_input(
-            "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
-        )
-    selected_morning_date = morning_date.strftime("%Y-%m-%d")
-    record = _get_report_record(selected_morning_date, page="morning")
-    for field, default_value in MORNING_DEFAULTS.items():
-        value = record.get(field, default_value) if record else default_value
-        if isinstance(value, float) and value.is_integer():
-            value = int(value)
-        st.session_state[field] = value
-    st.session_state["_loaded_morning_date"] = selected_morning_date
-    if _new_import and any(_uploads):
-        for metric, value in imported.items():
-            if metric in MORNING_DEFAULTS:
-                st.session_state[metric] = value
-        values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
-        values["total_remaining"] = sum(values[field] for field in ("recv_start", "in_transit", "sup_night_missing", "sup_morning_missing"))
-        _save_report_record(selected_morning_date, values, page="morning")
-        REPORT_STORE = _load_report_store()
-        st.session_state[_import_signature_key] = _import_signature
-        st.sidebar.success(f"จำข้อมูลหน้ากะเช้าของวันที่ {selected_morning_date} แล้ว")
-    else:
-        st.sidebar.caption("วันที่อิงจาก RP01 · ตัวเลขและข้อมูลหน้านี้จำอัตโนมัติ")
-    if st.session_state.get("_morning_autosave_error"):
-        st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_morning_autosave_error']}")
-else:
-    rp01_date = imported.get("report_date")
-    if rp01_date:
-        st.session_state["h_date_input"] = rp01_date
-    elif "h_date_input" not in st.session_state:
-        latest = REPORT_STORE.get("latest_date")
-        st.session_state["h_date_input"] = date.fromisoformat(latest) if latest else date.today()
-    with report_date_slot.container():
-        st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
-        hist_date = st.date_input(
-            "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
-        )
-    selected_report_date = hist_date.strftime("%Y-%m-%d")
-    record = _get_report_record(selected_report_date, page="history")
-    for field, default_value in REPORT_DEFAULTS.items():
-        value = record.get(field, default_value) if record else default_value
-        if isinstance(value, float) and value.is_integer():
-            value = int(value)
-        st.session_state[field] = value
-    if st.session_state.get("_loaded_history_detail_date") != selected_report_date:
-        st.session_state["hist_delayed_po_input"] = record.get("hist_delayed_po_input", "") if record else ""
-        st.session_state["hist_reject_item_input"] = record.get("hist_reject_item_input", "") if record else ""
-        st.session_state["hist_po_rp01_source"] = record.get("hist_po_rp01_source", "RP01 16.10") if record else "RP01 16.10"
-        st.session_state["_loaded_history_detail_date"] = selected_report_date
-    st.session_state["_loaded_report_date"] = selected_report_date
-    if _new_import:
-        for metric, value in imported.items():
-            if metric.startswith("hist_"):
-                st.session_state[metric] = value
-        st.session_state[_import_signature_key] = _import_signature
-    if _new_import and any(key.startswith("hist_") for key in imported):
-        _autosave_current_report()
-        REPORT_STORE = _load_report_store()
-        st.sidebar.success(f"นำเข้าและจำข้อมูลของวันที่ {selected_report_date} แล้ว")
-    elif record:
-        st.sidebar.caption("โหลดข้อมูลล่าสุดของวันที่เลือกแล้ว · บันทึกอัตโนมัติ")
-    else:
-        st.sidebar.caption("ข้อมูลที่แก้ไขจะถูกจำไว้โดยอัตโนมัติ")
-    if st.session_state.get("_autosave_error"):
-        st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_autosave_error']}")
-if import_error:
-    st.sidebar.error(f"อ่านไฟล์ไม่สำเร็จ: {import_error}")
-if imported.get("extra_join"):
-    st.sidebar.info(imported["extra_join"])
-_chips = "".join(
-    f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
-    for n, f in (("RP01 16.10", uploaded_rp01_1610), ("RP01 22.00", uploaded_rp01_2200), ("RP03", uploaded_rp03), ("RP42", uploaded_rp42))
-)
-st.sidebar.markdown(f'<div class="sb-foot">{_chips}</div>', unsafe_allow_html=True)
 
-st.markdown(
-    '<div class="hero"><div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
-    f'<div class="hero-title">{NAV_ICON[sheet_selection]} {sheet_selection}</div>'
-    '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
-    '<div class="hero-bar"></div></div>',
-    unsafe_allow_html=True,
-)
+
+def _sync_page(page_id, files, date_slot):
+    """Import one page's uploads, load/save its stored record, and show its sidebar notices.
+
+    Returns (report date chosen in the sidebar, date-mismatch warnings).
+    """
+    global REPORT_STORE
+    is_morning = page_id == "morning"
+    imported, import_error = (_load_morning_metrics if is_morning else _load_imported_metrics)(files)
+    warnings = _report_date_warnings(files, imported.get("report_date"))
+    uploads = (files["rp01_1610"], files["rp01_2200"], files["rp03"], files["rp42"])
+    signature = hashlib.sha256(
+        "|".join(
+            f"{f.name}:{hashlib.sha256(f.getvalue()).hexdigest()}" if f is not None else "-"
+            for f in uploads
+        ).encode("utf-8")
+    ).hexdigest()
+    signature_key = f"_last_import_signature_{page_id}"
+    new_import = signature != st.session_state.get(signature_key)
+    if is_morning:
+        rp01_date = imported.get("report_date")
+        if rp01_date:
+            st.session_state["m_date_input"] = rp01_date
+        elif "m_date_input" not in st.session_state:
+            latest = REPORT_STORE.get("morning_latest_date")
+            st.session_state["m_date_input"] = date.fromisoformat(latest) if latest else date.today()
+        with date_slot.container():
+            st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+            chosen_date = st.date_input(
+                "ประจำวันที่ (กะเช้าปัจจุบัน)", value=st.session_state["m_date_input"], key="m_date_input"
+            )
+        selected_morning_date = chosen_date.strftime("%Y-%m-%d")
+        record = _get_report_record(selected_morning_date, page="morning")
+        for field, default_value in MORNING_DEFAULTS.items():
+            value = record.get(field, default_value) if record else default_value
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+            st.session_state[field] = value
+        st.session_state["_loaded_morning_date"] = selected_morning_date
+        if new_import and any(uploads):
+            for metric, value in imported.items():
+                if metric in MORNING_DEFAULTS:
+                    st.session_state[metric] = value
+            values = {field: st.session_state.get(field, default) for field, default in MORNING_DEFAULTS.items()}
+            values["total_remaining"] = sum(values[field] for field in ("recv_start", "in_transit", "sup_night_missing", "sup_morning_missing"))
+            _save_report_record(selected_morning_date, values, page="morning")
+            REPORT_STORE = _load_report_store()
+            st.session_state[signature_key] = signature
+            st.sidebar.success(f"จำข้อมูลหน้ากะเช้าของวันที่ {selected_morning_date} แล้ว")
+        else:
+            st.sidebar.caption("วันที่อิงจาก RP01 · ตัวเลขและข้อมูลหน้านี้จำอัตโนมัติ")
+        if st.session_state.get("_morning_autosave_error"):
+            st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_morning_autosave_error']}")
+    else:
+        rp01_date = imported.get("report_date")
+        if rp01_date:
+            st.session_state["h_date_input"] = rp01_date
+        elif "h_date_input" not in st.session_state:
+            latest = REPORT_STORE.get("latest_date")
+            st.session_state["h_date_input"] = date.fromisoformat(latest) if latest else date.today()
+        with date_slot.container():
+            st.markdown('<div class="sb-label">วันที่รายงาน</div>', unsafe_allow_html=True)
+            chosen_date = st.date_input(
+                "ประจำวันที่ (ย้อนหลัง)", value=st.session_state["h_date_input"], key="h_date_input"
+            )
+        selected_report_date = chosen_date.strftime("%Y-%m-%d")
+        record = _get_report_record(selected_report_date, page="history")
+        for field, default_value in REPORT_DEFAULTS.items():
+            value = record.get(field, default_value) if record else default_value
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+            st.session_state[field] = value
+        if st.session_state.get("_loaded_history_detail_date") != selected_report_date:
+            st.session_state["hist_delayed_po_input"] = record.get("hist_delayed_po_input", "") if record else ""
+            st.session_state["hist_reject_item_input"] = record.get("hist_reject_item_input", "") if record else ""
+            st.session_state["hist_po_rp01_source"] = record.get("hist_po_rp01_source", "RP01 16.10") if record else "RP01 16.10"
+            st.session_state["_loaded_history_detail_date"] = selected_report_date
+        st.session_state["_loaded_report_date"] = selected_report_date
+        if new_import:
+            for metric, value in imported.items():
+                if metric.startswith("hist_"):
+                    st.session_state[metric] = value
+            st.session_state[signature_key] = signature
+        if new_import and any(key.startswith("hist_") for key in imported):
+            _autosave_current_report()
+            REPORT_STORE = _load_report_store()
+            st.sidebar.success(f"นำเข้าและจำข้อมูลของวันที่ {selected_report_date} แล้ว")
+        elif record:
+            st.sidebar.caption("โหลดข้อมูลล่าสุดของวันที่เลือกแล้ว · บันทึกอัตโนมัติ")
+        else:
+            st.sidebar.caption("ข้อมูลที่แก้ไขจะถูกจำไว้โดยอัตโนมัติ")
+        if st.session_state.get("_autosave_error"):
+            st.sidebar.error(f"บันทึกอัตโนมัติไม่สำเร็จ: {st.session_state['_autosave_error']}")
+    if import_error:
+        st.sidebar.error(f"อ่านไฟล์ไม่สำเร็จ: {import_error}")
+    if imported.get("extra_join"):
+        st.sidebar.info(imported["extra_join"])
+    return chosen_date, warnings
+
+
+def _chip_row(files):
+    return "".join(
+        f'<span class="sb-chip{" on" if f is not None else ""}">{n}</span>'
+        for n, f in (
+            ("RP01 16.10", files["rp01_1610"]), ("RP01 22.00", files["rp01_2200"]),
+            ("RP03", files["rp03"]), ("RP42", files["rp42"]),
+        )
+    )
+
+
+if IS_COMBINED:
+    hist_date, _hist_warnings = _sync_page("history", _page_uploads["history"], report_date_slot)
+    morning_date, _morning_warnings = _sync_page("morning", _page_uploads["morning"], report_date_slot_morning)
+    report_date_warnings = (
+        [f"[ย้อนหลัง] {w}" for w in _hist_warnings] + [f"[กะเช้า] {w}" for w in _morning_warnings]
+    )
+    st.sidebar.markdown(
+        f'<div class="sb-foot"><span class="sb-chip">🌙</span>{_chip_row(_page_uploads["history"])}</div>'
+        f'<div class="sb-foot" style="margin-top:6px;border-top:0;padding-top:0"><span class="sb-chip">☀️</span>{_chip_row(_page_uploads["morning"])}</div>',
+        unsafe_allow_html=True,
+    )
+else:
+    if sheet_selection == NAV[1]:
+        morning_date, report_date_warnings = _sync_page("morning", _active_uploads, report_date_slot)
+    else:
+        hist_date, report_date_warnings = _sync_page("history", _active_uploads, report_date_slot)
+    st.sidebar.markdown(f'<div class="sb-foot">{_chip_row(_active_uploads)}</div>', unsafe_allow_html=True)
+
+if not IS_COMBINED:
+    st.markdown(
+        '<div class="hero"><div class="hero-kicker">DCSB DISTRIBUTION CENTER · REPORT SYSTEM</div>'
+        f'<div class="hero-title">{NAV_ICON[sheet_selection]} {sheet_selection}</div>'
+        '<div class="hero-subtitle">ระบบสรุปยอดงานรับสินค้าและงานค้างรับคงเหลือ</div>'
+        '<div class="hero-bar"></div></div>',
+        unsafe_allow_html=True,
+    )
 for warning in report_date_warnings:
     st.warning(warning)
 
@@ -1491,7 +1836,7 @@ if sheet_selection == "สถานการณ์การรับ(กะเ�
 # =========================================================================
 # ชีตที่ 2: สรุปงานรับและงานค้างส่ง(ย้อนหลัง)
 # =========================================================================
-else:
+elif sheet_selection == NAV[0]:
     with st.expander("📋 วาง PO สำหรับคำนวณเลื่อนส่งและ Reject", expanded=False):
         st.caption("ใส่ PO สำหรับเลื่อนส่ง และใส่รหัส Item สำหรับ Reject ระบบจะเทียบกับไฟล์ที่เลือกและจำรายการแยกตามวันที่")
         source_name = st.selectbox(
@@ -1586,60 +1931,8 @@ else:
     hist_complete_all_label = f"{hist_complete_all:,}"
 
     st.markdown(
-        """
-        <style>
-        body:has(.history-theme) [data-testid="stMainBlockContainer"] { padding-top:.35rem; padding-bottom:.4rem; }
-        body:has(.history-theme) [data-testid="stVerticalBlock"] { gap:.42rem; }
-        body:has(.history-theme) [data-testid="stAppViewContainer"] { background:linear-gradient(145deg,#f4f8ff 0%,#e9f1fc 55%,#f8faff 100%); }
-        body:has(.history-theme) .hero { background:transparent; border:0; box-shadow:none; text-align:left; max-width:none; padding:1px 4px 0; margin:0; border-radius:0; }
-        body:has(.history-theme) .hero-kicker { color:#48658b; font-size:.55rem; }
-        body:has(.history-theme) .hero-title { color:#172c4b; font-size:1.45rem; margin:0; }
-        body:has(.history-theme) .hero-subtitle { color:#48658b; font-size:.68rem; margin:0; }
-        body:has(.history-theme) .hero-bar { display:none; }
-        body:has(.history-theme) .section-title { color:#172c4b; font-size:.88rem; margin:5px 0 2px; padding-bottom:0; }
-        body:has(.history-theme) .section-title::before { background:linear-gradient(160deg,#101b32,#24579b 65%,#80b5f2); box-shadow:0 2px 7px rgba(31,75,135,.3); }
-        body:has(.history-theme) .focus-card { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%); border:1px solid #6e9ed8; box-shadow:0 0 0 1px rgba(83,142,216,.2),0 8px 18px rgba(18,48,88,.22),0 18px 32px rgba(18,48,88,.14),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28); }
-        body:has(.history-theme) .focus-card::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,rgba(150,197,255,.38),rgba(150,197,255,0) 72%); pointer-events:none; }
-        body:has(.history-theme) .focus-card .focus-label { color:#e1efff; }
-        body:has(.history-theme) .focus-card .focus-value { color:#fff !important; text-shadow:0 0 10px rgba(111,174,255,.32); }
-        body:has(.history-theme) .focus-card .focus-unit,
-        body:has(.history-theme) .focus-card .focus-value span { color:#b7d5f8 !important; }
-        body:has(.history-theme) .focus-grid { gap:8px; margin:1px 0 2px; }
-        body:has(.history-theme) .focus-card { padding:8px 16px 7px; border-radius:18px; }
-        body:has(.history-theme) .focus-label { font-size:.72rem; }
-        body:has(.history-theme) .focus-value { font-size:1.8rem; line-height:1.15; margin:1px 0; }
-        body:has(.history-theme) .focus-unit { font-size:.62rem; }
-        body:has(.history-theme) .focus-card.status-complete { background:linear-gradient(125deg,#0b1426 0%,#14294a 48%,#285a9c 100%) !important; border-color:#6e9ed8 !important; box-shadow:0 0 0 1px rgba(83,142,216,.22),0 8px 18px rgba(18,48,88,.24),0 18px 32px rgba(18,48,88,.15),inset 0 2px 0 rgba(210,231,255,.28),inset 0 -3px 6px rgba(0,0,0,.28) !important; }
-        body:has(.history-theme) .focus-card.alert { background:linear-gradient(135deg,#fff 0%,#eaf3ff 58%,#d8e9ff 100%) !important; border-color:#eaa341 !important; box-shadow:0 0 0 1px rgba(234,163,65,.18),0 7px 17px rgba(54,82,118,.16),0 0 16px rgba(245,178,63,.2),inset 0 2px 0 rgba(255,255,255,.98),inset 0 -3px 5px rgba(64,91,127,.08) !important; }
-        body:has(.history-theme) .focus-card.alert::after { background:radial-gradient(circle,rgba(255,197,76,.62),rgba(255,146,45,0) 72%); }
-        body:has(.history-theme) .focus-card.alert .focus-label { color:#142a49 !important; }
-        body:has(.history-theme) .focus-card.alert .focus-unit,
-        body:has(.history-theme) .focus-card.alert .focus-value span { color:#354b67 !important; text-shadow:none; }
-        body:has(.history-theme) .focus-card.alert .focus-value .focus-number { color:transparent !important; -webkit-text-fill-color:transparent !important; font-size:inherit !important; font-weight:inherit !important; line-height:inherit !important; background:linear-gradient(100deg,#171717 0%,#a94316 48%,#e3a11b 78%,#f2c94c 100%); -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 1px 2px rgba(176,92,22,.2)); }
-        body:has(.history-theme) .report-wrap { background:linear-gradient(150deg,#fff,#edf4ff); border-color:#b8cce5; box-shadow:0 2px 4px rgba(27,54,89,.07),0 12px 28px rgba(34,73,122,.15),0 24px 44px rgba(34,73,122,.07),inset 0 2px 0 #fff,inset 0 -2px 5px rgba(45,83,130,.05); }
-        body:has(.history-theme) .report-head { border-color:#c6d7ec; color:#172c4b; }
-        body:has(.history-theme) .report-date,
-        body:has(.history-theme) .report-group { color:#294d7d; }
-        body:has(.history-theme) .report-group { border-color:#c6d7ec; }
-        body:has(.history-theme) .report-wrap.compact { padding:2px 4px 4px; border-radius:18px; }
-        body:has(.history-theme) .report-wrap.compact .report-head { padding:2px 6px 3px; margin-bottom:0; font-size:.82rem; }
-        body:has(.history-theme) .report-wrap.compact .report-grid { gap:3px; padding:1px; }
-        body:has(.history-theme) .report-wrap.compact .report-group { font-size:.68rem; line-height:1.08; padding:0 2px 1px; }
-        body:has(.history-theme) .report-wrap.compact .report-cell { min-height:46px; padding:2px 3px; border-radius:8px; gap:1px; }
-        body:has(.history-theme) .report-wrap.compact .report-label { font-size:.66rem; line-height:1.08; }
-        body:has(.history-theme) .report-wrap.compact .report-value { font-size:.95rem; }
-        body:has(.history-theme) .report-cell { background:linear-gradient(145deg,#fff 0%,#eaf2fd 100%) !important; border-color:#c2d3e9 !important; border-top-color:#477bb9 !important; box-shadow:0 3px 7px rgba(27,54,89,.12),inset 0 2px 0 rgba(255,255,255,.96); }
-        body:has(.history-theme) .report-label { color:#233d60 !important; }
-        body:has(.history-theme) .report-value { color:#142a49 !important; }
-        body:has(.history-theme) [class*="st-key-card"] { background:linear-gradient(145deg,#fff 0%,#e9f2ff 100%); border-color:#b7cce6; box-shadow:0 3px 8px rgba(27,54,89,.11),0 12px 24px rgba(34,73,122,.12),inset 0 2px 0 rgba(255,255,255,.96); }
-        body:has(.history-theme) .chart-title { color:#172c4b; }
-        body:has(.history-theme) .chart-sub { color:#48658b; border-color:#c6d7ec; }
-        body:has(.history-theme) [class*="st-key-card_hist"] { padding:.35rem .45rem .2rem; border-radius:20px; }
-        body:has(.history-theme) .chart-title { font-size:.8rem; margin-bottom:1px; }
-        body:has(.history-theme) .chart-sub { font-size:.62rem; margin-bottom:2px; padding-bottom:2px; }
-        </style>
-        <div class="history-theme" aria-hidden="true"></div>
-        """,
+        "<style>" + HISTORY_CSS + "</style>"
+        '<div class="history-theme" aria-hidden="true"></div>',
         unsafe_allow_html=True,
     )
 
@@ -1757,3 +2050,40 @@ else:
             )
         if st.session_state.get("_autosaved_at"):
             st.caption(f"จำข้อมูลล่าสุดอัตโนมัติ · {st.session_state['_autosaved_at']}")
+
+# =========================================================================
+# โหมดพรีเซนต์: รวมหน้า 1 (ย้อนหลัง) + หน้า 2 (กะเช้า) ไว้ในหน้าเดียว
+# แสดงเฉพาะส่วนที่ใช้พรีเซนต์ได้ — ไม่มีแถบข้าง ช่อง PO และตัวแก้ไขตัวเลข
+# =========================================================================
+else:
+    deck_html = build_deck_html(
+        _history_report_numbers(), _morning_report_numbers(), hist_date, morning_date
+    )
+    tool_a, tool_b, tool_c = st.columns([1.2, 1, 2.4], gap="small")
+    with tool_a:
+        hide_sidebar = st.checkbox("ซ่อนแถบข้าง (เต็มจอ)", value=True, key="deck_hide_sidebar")
+    with tool_b:
+        st.download_button(
+            "⬇️ ดึงเป็นไฟล์ HTML",
+            data=deck_html.encode("utf-8"),
+            file_name=f"DCSB_report_{hist_date:%Y%m%d}_{morning_date:%Y%m%d}.html",
+            mime="text/html",
+        )
+    with tool_c:
+        st.caption("ไฟล์ที่ดึงเปิดได้โดยไม่ต้องใช้แอป · กดปุ่ม 🖨️ ในหน้าพรีวิวเพื่อบันทึกเป็น PDF")
+    if hide_sidebar:
+        st.markdown(
+            """
+<style>
+[data-testid="stSidebar"], [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapsedControl"]:has(button[aria-label="Open sidebar"]),
+button[aria-label="Open sidebar"] { display:none !important; }
+.block-container { max-width:100% !important; padding:.5rem .8rem 1rem !important; }
+</style>
+""",
+            unsafe_allow_html=True,
+        )
+    if hasattr(st, "iframe"):
+        st.iframe(deck_html, height="content")
+    else:
+        components.html(deck_html, height=1800, scrolling=True)
