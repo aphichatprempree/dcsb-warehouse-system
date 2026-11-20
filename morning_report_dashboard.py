@@ -217,16 +217,19 @@ def _report_date_warnings(files, rp01_date):
 
 
 def _extra_complete(rp01_22, rp03):
-    """Sum only RP03 case quantities absent from RP01 Pallets Qty (VLOOKUP #N/A)."""
-    rp01_col = _column(rp01_22, "Pallets Qty")
+    """Sum RP03 case quantities for POs absent from RP01 22.00 (VLOOKUP #N/A)."""
+    rp01_col = _column(rp01_22, "P/O")
+    rp03_po_col = _column(rp03, "Purchase Order")
     rp03_col = _column(rp03, "Total Case Qty (iLPNs)")
-    rp01_qty = pd.to_numeric(rp01_22[rp01_col], errors="coerce").dropna()
+    rp01_po = rp01_22[rp01_col].map(lambda value: _norm_key(value).casefold())
+    rp03_po = rp03[rp03_po_col].map(lambda value: _norm_key(value).casefold())
     rp03_qty = pd.to_numeric(rp03[rp03_col], errors="coerce")
-    unmatched = rp03_qty.notna() & ~rp03_qty.isin(set(rp01_qty.tolist()))
+    rp01_po_keys = set(value for value in rp01_po if value)
+    unmatched = rp03_qty.notna() & rp03_po.ne("") & ~rp03_po.isin(rp01_po_keys)
     missing_count = int(unmatched.sum())
     total = float(rp03_qty[unmatched].sum())
     total = int(total) if total.is_integer() else total
-    return total, rp01_col, rp03_col, missing_count
+    return total, rp01_col, rp03_po_col, missing_count
 
 
 def _po_values(text_value):
@@ -332,8 +335,8 @@ def _load_imported_metrics(files):
                 extra, left, right, overlap = _extra_complete(d22, d03)
                 result["hist_extra"] = extra
                 result["extra_join"] = (
-                    f"ตรวจงานนอกรอบ: VLOOKUP {right} (RP03) ↔ {left} (RP01 22.00) "
-                    f"พบค่า #N/A {overlap:,} แถว · แสดงเป็นรายละเอียดในยอด RP03 ไม่บวกซ้ำ"
+                    f"ตรวจงานนอกรอบ: VLOOKUP PO {right} (RP03) ↔ {left} (RP01 22.00) "
+                    f"พบ PO ที่เป็น #N/A {overlap:,} แถว · รวมเฉพาะ Total Case Qty จากแถวนั้น"
                 )
         return result, None
     except Exception as exc:
