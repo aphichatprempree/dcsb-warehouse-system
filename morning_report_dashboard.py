@@ -1520,7 +1520,7 @@ def _render_upload_section(page_id, title, expanded):
     with st.sidebar.expander(title, expanded=expanded):
         uploads = {
             "rp01_1610": st.file_uploader(
-                "RP01 งานรับทั้งหมด (16.10)", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
+                "RP01 ประมาณการรับ", type=["xlsx", "xls"], key=f"{page_id}_rp01_1610"
             ),
         }
         if page_id == "history":
