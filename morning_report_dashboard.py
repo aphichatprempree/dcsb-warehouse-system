@@ -2027,7 +2027,7 @@ elif sheet_selection == NAV[0]:
             )
         with hc2:
             hist_complete = st.number_input(
-                "RP03 Total Case Qty ทั้งหมด", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
+                "งาน Complete ทั้งหมด(Total Case Qty)", value=hist_complete, step=1, key="hist_complete", on_change=_autosave_current_report
             )
             if hist_extra is not None:
                 hist_extra = st.number_input(
