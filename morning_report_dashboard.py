@@ -1352,7 +1352,7 @@ def _history_slide_html(h, date_text):
     rows = [
         ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ประมาณการรับ (Inventory)", f'{h["hist_inv"]:,}', False),
-        ("งานรับทั้งหมด (16.10 น.)", f'{h["hist_total_recv"]:,}', False),
+        ("งานรับทั้งหมด (ประมาณการรับ)", f'{h["hist_total_recv"]:,}', False),
         ("group", "งาน Complete"),
         ("งาน Complete จาก RP03 (หักงานนอกรอบแล้ว)", h["complete_base_label"], False),
         ("งานนอกรอบ Complete (ส่วนย่อย RP03)", h["extra_label"], False),
@@ -1958,7 +1958,7 @@ elif sheet_selection == NAV[0]:
     hist_report_values = [
         ("group", "ภาพรวมยอดประมาณการและงานรับ"),
         ("ประมาณการรับ (Inventory)", f"{hist_inv:,}", False),
-        ("งานรับทั้งหมด (16.10 น.)", f"{hist_total_recv:,}", False),
+        ("งานรับทั้งหมด (ประมาณการรับ)", f"{hist_total_recv:,}", False),
         ("group", "งาน Complete"),
         ("งาน Complete จาก RP03 (หักงานนอกรอบแล้ว)", hist_complete_base_label, False),
         ("งานนอกรอบ Complete (ส่วนย่อย RP03)", hist_extra_label, False),
@@ -2023,7 +2023,7 @@ elif sheet_selection == NAV[0]:
                 "ประมาณการรับ (Inventory)", value=hist_inv, step=1, key="hist_inv", on_change=_autosave_current_report
             )
             hist_total_recv = st.number_input(
-                "งานรับทั้งหมด (16.10 น.)", value=hist_total_recv, step=1, key="hist_total_recv", on_change=_autosave_current_report
+                "งานรับทั้งหมด (ประมาณการรับ)", value=hist_total_recv, step=1, key="hist_total_recv", on_change=_autosave_current_report
             )
         with hc2:
             hist_complete = st.number_input(
